@@ -1,0 +1,66 @@
+---
+- name: Deploy git-notes-client systemd units
+  hosts: localhost
+  connection: local
+  become: true
+  vars:
+    project_root: "{{ playbook_dir | dirname }}"
+    env_file: "{{ project_root }}/.env"
+  tasks:
+    - name: Require .env file
+      ansible.builtin.stat:
+        path: "{{ env_file }}"
+      register: env_stat
+
+    - name: Fail when .env is missing
+      ansible.builtin.fail:
+        msg: "Copy .env.example to .env and fill in your values before deploying."
+      when: not env_stat.stat.exists
+
+    - name: Load variables from .env
+      ansible.builtin.shell: |
+        set -a
+        source "{{ env_file }}"
+        set +a
+        printf 'service_user=%s\n' "$SERVICE_USER"
+        printf 'project_dir=%s\n' "$PROJECT_DIR"
+        printf 'ssh_user=%s\n' "$SSH_USER"
+        printf 'ssh_host=%s\n' "$SSH_HOST"
+        printf 'tunnel_port=%s\n' "$TUNNEL_PORT"
+      args:
+        executable: /bin/bash
+      register: env_vars
+      changed_when: false
+
+    - name: Parse .env variables
+      ansible.builtin.set_fact:
+        service_user: "{{ (env_vars.stdout_lines | select('match', '^service_user=') | first).split('=')[1] }}"
+        project_dir: "{{ (env_vars.stdout_lines | select('match', '^project_dir=') | first).split('=')[1] }}"
+        ssh_user: "{{ (env_vars.stdout_lines | select('match', '^ssh_user=') | first).split('=')[1] }}"
+        ssh_host: "{{ (env_vars.stdout_lines | select('match', '^ssh_host=') | first).split('=')[1] }}"
+        tunnel_port: "{{ (env_vars.stdout_lines | select('match', '^tunnel_port=') | first).split('=')[1] }}"
+
+    - name: Install git-notes-client-dev.service
+      ansible.builtin.template:
+        src: templates/git-notes-client-dev.service.j2
+        dest: /etc/systemd/system/git-notes-client-dev.service
+        mode: "0644"
+
+    - name: Install autossh-git-notes-client.service
+      ansible.builtin.template:
+        src: templates/autossh-git-notes-client.service.j2
+        dest: /etc/systemd/system/autossh-git-notes-client.service
+        mode: "0644"
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable and start services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - git-notes-client-dev.service
+        - autossh-git-notes-client.service

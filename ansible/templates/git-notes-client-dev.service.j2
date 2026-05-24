@@ -1,0 +1,16 @@
+[Unit]
+Description=Git Notes Client Vite Dev Server (port {{ tunnel_port }})
+After=network.target
+
+[Service]
+User={{ service_user }}
+Group={{ service_user }}
+WorkingDirectory={{ project_dir }}
+Environment=PATH=/usr/bin:/usr/local/bin
+ExecStart=/usr/bin/npm run dev
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+
+[Install]
+WantedBy=multi-user.target
