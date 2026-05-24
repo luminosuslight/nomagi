@@ -15,7 +15,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <ScrollArea class="flex-1">
+  <ScrollArea class="min-h-0 flex-1">
     <div
       v-if="isLoading"
       class="space-y-2 p-3"

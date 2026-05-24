@@ -125,7 +125,7 @@ onUnmounted(() => {
     <aside
       :class="
         cn(
-          'flex w-full flex-col border-r md:w-72 md:min-h-dvh',
+          'flex w-full min-h-0 flex-1 flex-col border-r md:w-72 md:flex-none md:min-h-dvh',
           mobileView !== 'files' && 'hidden md:flex',
         )
       "
