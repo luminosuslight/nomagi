@@ -121,7 +121,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex min-h-dvh flex-col md:flex-row pb-14 md:pb-0">
+  <div class="flex h-dvh flex-col md:flex-row pb-14 md:pb-0">
     <aside
       :class="
         cn(
@@ -176,7 +176,7 @@ onUnmounted(() => {
     <main
       :class="
         cn(
-          'flex min-h-0 flex-1 flex-col',
+          'flex min-h-0 flex-1 flex-col overflow-hidden',
           mobileView !== 'editor' && 'hidden md:flex',
         )
       "

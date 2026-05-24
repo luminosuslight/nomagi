@@ -62,6 +62,6 @@
     min-height: 100dvh;
   }
   #app {
-    min-height: 100dvh;
+    height: 100dvh;
   }
 }
