@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { errorMessage, reportError } from '@/lib/errors'
-import { FileText, Pencil, Settings } from 'lucide-vue-next'
+import { FileText, Pencil, Plus, Settings } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
 import Separator from '@/components/ui/Separator.vue'
@@ -33,6 +33,7 @@ const {
   sync,
   refreshFiles,
   selectFile: loadFile,
+  createFile,
 } = useNotes()
 
 const settingsOpen = ref(false)
@@ -71,6 +72,20 @@ async function handleSync() {
 function selectFile(file: string) {
   selectedFile.value = file
   mobileView.value = 'editor'
+}
+
+async function handleNewFile() {
+  const name = window.prompt('New note filename', 'untitled.md')
+  if (!name) return
+
+  try {
+    const filename = await createFile(name)
+    mobileView.value = 'editor'
+    toast.success(`Created ${filename}`)
+  } catch (err) {
+    reportError('createFile', err)
+    toast.error(errorMessage(err))
+  }
 }
 
 function handleOnline() {
@@ -129,6 +144,19 @@ onUnmounted(() => {
         </Button>
       </div>
       <Separator />
+      <div class="p-3 pb-0">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          class="w-full"
+          :disabled="!isCloned || isBusy"
+          @click="handleNewFile"
+        >
+          <Plus class="size-4" />
+          New note
+        </Button>
+      </div>
       <FileList
         :files="files"
         :selected-file="selectedFile"

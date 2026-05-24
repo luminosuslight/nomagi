@@ -67,6 +67,15 @@ function corsProxy(settings: GitSettings) {
   return settings.corsProxy.trim() || undefined
 }
 
+export function normalizeMarkdownFilename(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) throw new Error('Filename is required')
+  if (trimmed.includes('/') || trimmed.includes('\\')) {
+    throw new Error('Filename must not contain path separators')
+  }
+  return trimmed.endsWith('.md') ? trimmed : `${trimmed}.md`
+}
+
 async function repoExists(): Promise<boolean> {
   try {
     await pfs.stat(`${REPO_DIR}/.git`)
@@ -193,6 +202,20 @@ export function useGit() {
     await commitFile(filepath)
   }
 
+  async function createFile(filepath: string, content = '') {
+    const filename = normalizeMarkdownFilename(filepath)
+
+    try {
+      await pfs.stat(`${REPO_DIR}/${filename}`)
+      throw new Error('File already exists')
+    } catch (err) {
+      if (err instanceof Error && err.message === 'File already exists') throw err
+    }
+
+    await writeFile(filename, content)
+    return filename
+  }
+
   return {
     settings,
     isCloned,
@@ -207,5 +230,6 @@ export function useGit() {
     listMarkdownFiles,
     readFile,
     writeFile,
+    createFile,
   }
 }

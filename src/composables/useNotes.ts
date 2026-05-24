@@ -86,6 +86,13 @@ export function useNotes() {
     if (filepath) void selectFile(filepath)
   })
 
+  async function createFile(name: string) {
+    const filename = await git.createFile(name, '')
+    await refreshFiles()
+    selectedFile.value = filename
+    return filename
+  }
+
   return {
     ...git,
     files,
@@ -98,5 +105,6 @@ export function useNotes() {
     refreshFiles,
     selectFile,
     saveNow,
+    createFile,
   }
 }
