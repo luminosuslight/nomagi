@@ -13,7 +13,7 @@ import SidebarViewTabs, { type SidebarView } from '@/components/SidebarViewTabs.
 import Editor from '@/components/Editor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import SyncButton from '@/components/SyncButton.vue'
-import { Toaster } from 'vue-sonner'
+import { Toaster } from '@/components/ui/sonner'
 import { useNotes } from '@/composables/useNotes'
 import type { GitSettings } from '@/composables/useGit'
 
@@ -64,7 +64,7 @@ async function handleSync(manual = false) {
   try {
     const result = await syncNotes({ auto: !manual })
     if (result.skipped) return
-    toast.success('Synced with remote')
+    if (manual) toast.success('Synced with remote')
   } catch (err) {
     reportError('sync', err)
     toast.error(errorMessage(err))
@@ -240,9 +240,11 @@ onUnmounted(() => {
       @clone="handleClone"
     />
 
-    <Toaster
-      position="top-center"
-      rich-colors
-    />
   </div>
+
+  <Toaster
+    position="bottom-center"
+    :mobile-offset="{ bottom: '5rem' }"
+    rich-colors
+  />
 </template>
