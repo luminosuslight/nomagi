@@ -94,6 +94,17 @@ const syncStatus = ref<SyncStatus>('idle')
 const lastError = ref<string | null>(null)
 const isBusy = ref(false)
 
+let gitLock: Promise<void> = Promise.resolve()
+
+function withGitLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = gitLock.then(fn)
+  gitLock = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
 let lastLocalCommitAt: number | null = null
 let lastPushedCommitOid: string | null = null
 
@@ -160,21 +171,23 @@ export function useGit() {
     lastError.value = null
 
     try {
-      await git.clone({
-        fs,
-        http,
-        dir: REPO_DIR,
-        url: settings.repoUrl.trim(),
-        corsProxy: corsProxy(settings),
-        headers: authHeaders(settings),
-        onAuth: auth(settings),
-        singleBranch: true,
-        depth: 1,
+      await withGitLock(async () => {
+        await git.clone({
+          fs,
+          http,
+          dir: REPO_DIR,
+          url: settings.repoUrl.trim(),
+          corsProxy: corsProxy(settings),
+          headers: authHeaders(settings),
+          onAuth: auth(settings),
+          singleBranch: true,
+          depth: 1,
+        })
+        isCloned.value = true
+        const head = await resolveHeadOid()
+        saveLastPushedCommitOid(head)
+        await refreshCommitState()
       })
-      isCloned.value = true
-      const head = await resolveHeadOid()
-      saveLastPushedCommitOid(head)
-      await refreshCommitState()
     } finally {
       isBusy.value = false
     }
@@ -188,28 +201,30 @@ export function useGit() {
     isBusy.value = true
 
     try {
-      await git.pull({
-        fs,
-        http,
-        dir: REPO_DIR,
-        corsProxy: corsProxy(settings),
-        headers: authHeaders(settings),
-        onAuth: auth(settings),
-        fastForwardOnly: true,
-        author: settings.author,
-      })
+      await withGitLock(async () => {
+        await git.pull({
+          fs,
+          http,
+          dir: REPO_DIR,
+          corsProxy: corsProxy(settings),
+          headers: authHeaders(settings),
+          onAuth: auth(settings),
+          fastForwardOnly: true,
+          author: settings.author,
+        })
 
-      await git.push({
-        fs,
-        http,
-        dir: REPO_DIR,
-        corsProxy: corsProxy(settings),
-        headers: authHeaders(settings),
-        onAuth: auth(settings),
-      })
+        await git.push({
+          fs,
+          http,
+          dir: REPO_DIR,
+          corsProxy: corsProxy(settings),
+          headers: authHeaders(settings),
+          onAuth: auth(settings),
+        })
 
-      saveLastPushedCommitOid(await resolveHeadOid())
-      await refreshCommitState()
+        saveLastPushedCommitOid(await resolveHeadOid())
+        await refreshCommitState()
+      })
 
       syncStatus.value = 'idle'
     } catch (err) {
@@ -254,8 +269,10 @@ export function useGit() {
 
   /** Write file to disk, then commit (amending if within the coalesce window and unpushed). */
   async function writeFile(filepath: string, content: string) {
-    await pfs.writeFile(`${REPO_DIR}/${filepath}`, content, 'utf8')
-    await commitFile(filepath)
+    await withGitLock(async () => {
+      await pfs.writeFile(`${REPO_DIR}/${filepath}`, content, 'utf8')
+      await commitFile(filepath)
+    })
   }
 
   async function createFile(filepath: string, content = '') {

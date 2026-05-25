@@ -3,12 +3,18 @@ import { useGit } from './useGit'
 import { errorMessage, reportError } from '@/lib/errors'
 
 const COMMIT_DEBOUNCE_MS = 500
+/** Auto-sync is deferred while the user edited within this window. */
+const SYNC_SKIP_EDIT_MS = 2_000
 
 /**
- * Commit strategy: debounce edits (500ms), then write + commit if dirty.
- * Commits within 1 min of the last (unpushed) commit amend it instead of
- * creating a new one. flush() cancels the timer and commits immediately —
- * used when switching files or hiding the tab.
+ * Commit/sync orchestration (see useGit.ts for amend + push tracking).
+ *
+ * Commit: debounce (COMMIT_DEBOUNCE_MS) → persistIfDirty → writeFile + commit.
+ * Amend within COMMIT_AMEND_WINDOW_MS if HEAD is unpushed (useGit).
+ * flush() on file switch / tab hide; openFile commits previous file when switching.
+ *
+ * Sync: syncNotes({ auto }) — auto skips if isEditingActive() (SYNC_SKIP_EDIT_MS).
+ * Manual sync always runs. Reload open file only if !isDirty() after sync.
  */
 export function useNotes() {
   const git = useGit()
@@ -23,6 +29,7 @@ export function useNotes() {
   let saveTimer: ReturnType<typeof setTimeout> | null = null
   let skipSave = false
   let lastPersistedContent = ''
+  let lastEditAt = 0
 
   function clearSaveTimer() {
     if (saveTimer) {
@@ -33,6 +40,13 @@ export function useNotes() {
 
   function isDirty(): boolean {
     return !skipSave && selectedFile.value !== null && content.value !== lastPersistedContent
+  }
+
+  function isEditingActive(): boolean {
+    if (isSaving.value) return true
+    if (saveTimer !== null) return true
+    if (lastEditAt > 0 && Date.now() - lastEditAt < SYNC_SKIP_EDIT_MS) return true
+    return false
   }
 
   async function persistIfDirty() {
@@ -65,6 +79,32 @@ export function useNotes() {
       saveTimer = null
       void persistIfDirty().catch((err) => reportError('auto-save', err))
     }, COMMIT_DEBOUNCE_MS)
+  }
+
+  async function reloadCurrentFileIfClean() {
+    if (!selectedFile.value || isDirty()) return
+
+    skipSave = true
+    try {
+      content.value = await git.readFile(selectedFile.value)
+      lastPersistedContent = content.value
+    } catch (err) {
+      reportError('readFile', err)
+      saveError.value = errorMessage(err)
+    } finally {
+      skipSave = false
+    }
+  }
+
+  async function syncNotes(options: { auto?: boolean } = {}): Promise<{ skipped?: boolean }> {
+    if (!git.isCloned.value || !navigator.onLine) return { skipped: true }
+    if (options.auto && isEditingActive()) return { skipped: true }
+
+    await flush()
+    await git.sync()
+    await refreshFiles()
+    await reloadCurrentFileIfClean()
+    return {}
   }
 
   async function refreshFiles() {
@@ -124,6 +164,7 @@ export function useNotes() {
   }
 
   watch(content, () => {
+    lastEditAt = Date.now()
     scheduleCommit()
   })
 
@@ -165,6 +206,7 @@ export function useNotes() {
     refreshFiles,
     selectFile: openFile,
     flush,
+    syncNotes,
     createFile,
   }
 }

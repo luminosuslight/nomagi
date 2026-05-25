@@ -30,10 +30,8 @@ const {
   checkCloned,
   updateSettings,
   clone,
-  sync,
+  syncNotes,
   refreshFiles,
-  selectFile: loadFile,
-  flush,
   createFile,
 } = useNotes()
 
@@ -56,14 +54,10 @@ async function handleClone(next: GitSettings) {
   }
 }
 
-async function handleSync() {
+async function handleSync(manual = false) {
   try {
-    await flush()
-    await sync()
-    await refreshFiles()
-    if (selectedFile.value) {
-      await loadFile(selectedFile.value)
-    }
+    const result = await syncNotes({ auto: !manual })
+    if (result.skipped) return
     toast.success('Synced with remote')
   } catch (err) {
     reportError('sync', err)
@@ -92,7 +86,7 @@ async function handleNewFile() {
 
 function handleOnline() {
   isOnline.value = true
-  void handleSync()
+  void handleSync(false)
 }
 
 function handleOffline() {
@@ -108,7 +102,7 @@ onMounted(async () => {
   }
 
   syncInterval = setInterval(() => {
-    if (navigator.onLine) void handleSync()
+    if (navigator.onLine) void handleSync(false)
   }, 60_000)
 
   window.addEventListener('online', handleOnline)
@@ -170,7 +164,7 @@ onUnmounted(() => {
           :sync-status="syncStatus"
           :is-busy="isBusy"
           :is-online="isOnline"
-          @sync="handleSync"
+          @sync="handleSync(true)"
         />
       </div>
     </aside>
