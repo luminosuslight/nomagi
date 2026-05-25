@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 type EditorKind = 'tiptap' | 'milkdown'
 
-const editorKind = ref<EditorKind>('tiptap')
+const editorKind = ref<EditorKind>('milkdown')
 
 defineProps<{
   filename: string | null

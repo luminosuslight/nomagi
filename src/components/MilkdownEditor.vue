@@ -72,7 +72,7 @@ watch(
   <div
     :class="
       cn(
-        'milkdown-editor absolute inset-0 h-full min-h-0 overflow-y-auto px-4 py-3 text-base focus-visible:outline-none',
+        'milkdown-editor absolute inset-0 h-full min-h-0 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
         disabled && 'cursor-not-allowed opacity-50',
         $props.class,
       )
@@ -88,5 +88,13 @@ watch(
   min-height: 100%;
   font-size: 1rem;
   outline: none;
+}
+
+.milkdown-editor :deep(.milkdown) {
+  padding-top: 0;
+}
+
+.milkdown-editor :deep(.ProseMirror) {
+  padding-top: 0.25rem;
 }
 </style>
