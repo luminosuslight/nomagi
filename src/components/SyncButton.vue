@@ -20,8 +20,8 @@ const emit = defineEmits<{
     <span
       v-if="hasUnsyncedChanges"
       class="size-2 shrink-0 rounded-full bg-amber-500"
-      title="Unsynced changes"
-      aria-label="Unsynced changes"
+      title="Unpushed commits"
+      aria-label="Unpushed commits"
     />
     <Button
       type="button"

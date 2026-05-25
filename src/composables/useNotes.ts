@@ -32,26 +32,13 @@ export function useNotes() {
   let skipSave = false
   const lastPersistedContent = ref('')
   let lastEditAt = 0
-  const hasPendingSave = ref(false)
-
-  const hasUnsyncedChanges = computed(
-    () =>
-      git.hasUnpushedCommits.value || hasLocalEdits.value || hasPendingSave.value,
-  )
-
-  const hasLocalEdits = computed(
-    () =>
-      !isLoadingContent.value &&
-      selectedFile.value !== null &&
-      content.value !== lastPersistedContent.value,
-  )
+  const hasUnsyncedChanges = computed(() => git.hasUnpushedCommits.value)
 
   function clearSaveTimer() {
     if (saveTimer) {
       clearTimeout(saveTimer)
       saveTimer = null
     }
-    hasPendingSave.value = false
   }
 
   function isDirty(): boolean {
@@ -91,10 +78,8 @@ export function useNotes() {
   function scheduleCommit() {
     if (!selectedFile.value || skipSave) return
     clearSaveTimer()
-    hasPendingSave.value = true
     saveTimer = setTimeout(() => {
       saveTimer = null
-      hasPendingSave.value = false
       void persistIfDirty().catch((err) => reportError('auto-save', err))
     }, COMMIT_DEBOUNCE_MS)
   }
