@@ -40,6 +40,7 @@ function setLines(nextLines: DrawingLine[]) {
 const {
   color,
   size,
+  mode,
   strokeId,
   bindCanvas,
   onStartDrawing,
@@ -127,11 +128,37 @@ onUnmounted(() => {
       contenteditable="false"
     >
       <div
-        class="flex shrink-0 items-center gap-3 border-b px-4 py-3"
+        class="flex shrink-0 flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:gap-3"
         data-drawing-controls
         contenteditable="false"
       >
-        <ColorPicker v-model="color" />
+        <div class="flex items-center gap-3">
+          <ColorPicker v-model="color" />
+          <div
+            class="flex shrink-0 items-center gap-1 rounded-md border border-input p-1"
+            role="group"
+            aria-label="Drawing mode"
+          >
+            <Button
+              type="button"
+              size="sm"
+              :variant="mode === 'simple' ? 'default' : 'outline'"
+              class="text-base"
+              @click="mode = 'simple'"
+            >
+              Basic
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              :variant="mode === 'advanced' ? 'default' : 'outline'"
+              class="text-base"
+              @click="mode = 'advanced'"
+            >
+              Pen
+            </Button>
+          </div>
+        </div>
         <div class="flex min-w-0 flex-1 items-center gap-3">
           <Label class="shrink-0 text-base text-muted-foreground">Width</Label>
           <Slider
@@ -142,23 +169,25 @@ onUnmounted(() => {
             class="min-w-0 flex-1"
           />
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          class="shrink-0 text-base"
-          @click="clear"
-        >
-          Clear
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          class="shrink-0 text-base"
-          @click="stopEditing"
-        >
-          Done
-        </Button>
+        <div class="flex items-center justify-end gap-3 sm:shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            class="text-base"
+            @click="clear"
+          >
+            Clear
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            class="text-base"
+            @click="stopEditing"
+          >
+            Done
+          </Button>
+        </div>
       </div>
 
       <div class="min-h-0 flex-1 bg-muted/20 p-4">

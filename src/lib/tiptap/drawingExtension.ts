@@ -4,6 +4,7 @@ import DrawingNodeView from '@/components/tiptap/DrawingNodeView.vue'
 import {
   DRAWING_VIEWBOX,
   linesFromSvg,
+  pathAttributesForLine,
   type DrawingLine,
 } from '@/lib/drawing/drawingTypes'
 import { shouldStopDrawingEvent } from '@/lib/drawing/pointerEvents'
@@ -54,18 +55,7 @@ export const Drawing = Node.create({
 
   renderHTML({ node }) {
     const lines = node.attrs.lines as DrawingLine[]
-    const paths = lines.map((line) => [
-      'path',
-      {
-        id: `id-${line.id}`,
-        d: line.path,
-        stroke: line.color,
-        'stroke-width': line.size,
-        fill: 'none',
-        'stroke-linecap': 'round',
-        'stroke-linejoin': 'round',
-      },
-    ])
+    const paths = lines.map((line) => ['path', pathAttributesForLine(line)])
 
     return [
       'figure',

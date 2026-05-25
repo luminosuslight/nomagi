@@ -6,6 +6,10 @@ defineProps<{
   excludeId?: string
   interactive?: boolean
 }>()
+
+function isAdvanced(line: DrawingLine) {
+  return (line.mode ?? 'simple') === 'advanced'
+}
 </script>
 
 <template>
@@ -23,11 +27,12 @@ defineProps<{
       v-if="item.id !== excludeId"
       :id="`id-${item.id}`"
       :d="item.path"
-      :stroke="item.color"
-      :stroke-width="item.size"
-      fill="none"
-      stroke-linecap="round"
-      stroke-linejoin="round"
+      :stroke="isAdvanced(item) ? 'none' : item.color"
+      :stroke-width="isAdvanced(item) ? undefined : item.size"
+      :fill="isAdvanced(item) ? item.color : 'none'"
+      :stroke-linecap="isAdvanced(item) ? undefined : 'round'"
+      :stroke-linejoin="isAdvanced(item) ? undefined : 'round'"
+      :data-mode="isAdvanced(item) ? 'advanced' : undefined"
       pointer-events="none"
     />
   </template>

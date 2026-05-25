@@ -1,7 +1,8 @@
 import { onBeforeUnmount, ref, type Ref } from 'vue'
 import * as d3 from 'd3'
-import type { DrawingLine } from '@/lib/drawing/drawingTypes'
+import type { DrawingLine, DrawingMode, DrawingSample } from '@/lib/drawing/drawingTypes'
 import { coalescedPointerEvents } from '@/lib/drawing/pointerEvents'
+import { pathFromSamples, penPressureWithTilt } from '@/lib/drawing/strokePath'
 
 export function useDrawingCanvas(
   canvas: Ref<SVGSVGElement | null>,
@@ -10,9 +11,10 @@ export function useDrawingCanvas(
 ) {
   const color = ref('#000000')
   const size = ref(1)
+  const mode = ref<DrawingMode>('simple')
   const svg = ref<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null)
-  const path = ref<d3.Selection<SVGPathElement, [number, number][], null, undefined> | null>(null)
-  const points = ref<[number, number][]>([])
+  const path = ref<d3.Selection<SVGPathElement, DrawingSample[], null, undefined> | null>(null)
+  const points = ref<DrawingSample[]>([])
   const drawing = ref(false)
   const strokeId = ref(crypto.randomUUID())
   const activePointerId = ref<number | null>(null)
@@ -36,20 +38,33 @@ export function useDrawingCanvas(
       const position = pointerPosition(sample)
       if (!position) continue
 
-      const last = points.value.at(-1)
-      if (last && last[0] === position[0] && last[1] === position[1]) continue
+      const nextSample: DrawingSample = {
+        x: position[0],
+        y: position[1],
+        pressure: mode.value === 'advanced' ? penPressureWithTilt(sample) : 0.5,
+      }
 
-      points.value.push(position)
+      const last = points.value.at(-1)
+      if (
+        last &&
+        last.x === nextSample.x &&
+        last.y === nextSample.y &&
+        last.pressure === nextSample.pressure
+      ) {
+        continue
+      }
+
+      points.value.push(nextSample)
       added = true
     }
 
     return added
   }
 
-  function commitStroke(strokePoints: [number, number][]) {
+  function commitStroke(strokePoints: DrawingSample[], complete = false) {
     if (strokePoints.length === 0) return
 
-    const nextPath = d3.line().curve(d3.curveBasis)(strokePoints) ?? ''
+    const nextPath = pathFromSamples(strokePoints, mode.value, size.value, complete)
     const lines = getLines().filter((item) => item.id !== strokeId.value)
 
     setLines([
@@ -59,8 +74,27 @@ export function useDrawingCanvas(
         color: color.value,
         size: size.value,
         path: nextPath,
+        mode: mode.value,
       },
     ])
+  }
+
+  function configurePreviewPath(
+    preview: d3.Selection<SVGPathElement, DrawingSample[], null, undefined>,
+  ) {
+    preview.attr('id', `id-${strokeId.value}`).attr('pointer-events', 'none')
+
+    if (mode.value === 'advanced') {
+      preview.attr('fill', color.value).attr('stroke', 'none')
+      return
+    }
+
+    preview
+      .attr('stroke', color.value)
+      .attr('stroke-width', size.value)
+      .attr('fill', 'none')
+      .attr('stroke-linecap', 'round')
+      .attr('stroke-linejoin', 'round')
   }
 
   function onStartDrawing(event: PointerEvent) {
@@ -74,16 +108,8 @@ export function useDrawingCanvas(
 
     drawing.value = true
     points.value = []
-    path.value = svg.value
-      .append('path')
-      .datum(points.value)
-      .attr('id', `id-${strokeId.value}`)
-      .attr('stroke', color.value)
-      .attr('stroke-width', size.value)
-      .attr('fill', 'none')
-      .attr('stroke-linecap', 'round')
-      .attr('stroke-linejoin', 'round')
-      .attr('pointer-events', 'none')
+    path.value = svg.value.append('path').datum(points.value)
+    configurePreviewPath(path.value)
 
     appendPointerSamples(event)
     if (points.value.length > 0) tick()
@@ -112,7 +138,7 @@ export function useDrawingCanvas(
     if (!drawing.value) return
 
     appendPointerSamples(event)
-    commitStroke(points.value)
+    commitStroke(points.value, true)
     drawing.value = false
     svg.value?.select(`#id-${strokeId.value}`).remove()
     strokeId.value = crypto.randomUUID()
@@ -125,8 +151,8 @@ export function useDrawingCanvas(
 
     requestAnimationFrame(() => {
       path.value?.attr('d', (strokePoints) => {
-        commitStroke(strokePoints)
-        return d3.line().curve(d3.curveBasis)(strokePoints) ?? ''
+        commitStroke(strokePoints, false)
+        return pathFromSamples(strokePoints, mode.value, size.value, false)
       })
     })
   }
@@ -144,6 +170,7 @@ export function useDrawingCanvas(
   return {
     color,
     size,
+    mode,
     strokeId,
     bindCanvas,
     onStartDrawing,

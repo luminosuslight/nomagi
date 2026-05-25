@@ -4,6 +4,7 @@ import { $nodeSchema } from '@milkdown/kit/utils'
 import {
   DRAWING_VIEWBOX,
   linesFromSvg,
+  pathAttributesForLine,
   type DrawingLine,
 } from '@/lib/drawing/drawingTypes'
 import { figureHtmlFromLines } from '@/lib/drawing/figureMarkdown'
@@ -32,18 +33,7 @@ export const drawingSchema = $nodeSchema('drawing', () => ({
   ],
   toDOM: (node) => {
     const lines = node.attrs.lines as DrawingLine[]
-    const paths = lines.map((line) => [
-      'path',
-      {
-        id: `id-${line.id}`,
-        d: line.path,
-        stroke: line.color,
-        'stroke-width': line.size,
-        fill: 'none',
-        'stroke-linecap': 'round',
-        'stroke-linejoin': 'round',
-      },
-    ])
+    const paths = lines.map((line) => ['path', pathAttributesForLine(line)])
 
     return [
       'figure',
