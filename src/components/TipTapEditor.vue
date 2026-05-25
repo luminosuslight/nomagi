@@ -8,7 +8,7 @@ import { Pencil } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { Drawing } from '@/lib/tiptap/drawingExtension'
 import { createTurndownService } from '@/lib/tiptap/markdownDrawing'
-import { tiptapEditorOverlayRootKey } from '@/lib/tiptap/editorOverlay'
+import { editorOverlayRootKey } from '@/lib/editorOverlay'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<{
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const turndown = createTurndownService()
 const overlayRoot = ref<HTMLElement | null>(null)
 
-provide(tiptapEditorOverlayRootKey, overlayRoot)
+provide(editorOverlayRootKey, overlayRoot)
 
 function markdownToHtml(markdown: string) {
   if (!markdown) return ''

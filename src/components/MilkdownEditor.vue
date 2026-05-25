@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { provide, ref, watch } from 'vue'
+import { Pencil } from 'lucide-vue-next'
 import { Milkdown, useEditor } from '@milkdown/vue'
 import { Crepe } from '@milkdown/crepe'
-import { replaceAll } from '@milkdown/utils'
+import { callCommand, replaceAll } from '@milkdown/kit/utils'
+import Button from '@/components/ui/Button.vue'
+import { editorOverlayRootKey } from '@/lib/editorOverlay'
+import {
+  drawingOverlayRootCtx,
+  drawingRemark,
+  drawingSchema,
+  drawingView,
+  insertDrawingCommand,
+} from '@/lib/milkdown/drawing'
 import { cn } from '@/lib/utils'
 
 import '@milkdown/crepe/theme/common/style.css'
@@ -20,7 +30,10 @@ const emit = defineEmits<{
 }>()
 
 const crepeRef = ref<Crepe>()
+const overlayRoot = ref<HTMLElement | null>(null)
 let lastUserChange = 0
+
+provide(editorOverlayRootKey, overlayRoot)
 
 const { loading } = useEditor((root) => {
   const crepe = new Crepe({
@@ -32,6 +45,16 @@ const { loading } = useEditor((root) => {
       },
     },
   })
+
+  crepe.editor
+    .use(drawingOverlayRootCtx)
+    .config((ctx) => {
+      ctx.set(drawingOverlayRootCtx.key, overlayRoot)
+    })
+    .use(drawingRemark)
+    .use(drawingSchema)
+    .use(drawingView)
+    .use(insertDrawingCommand)
 
   crepe.on((listener) => {
     listener.markdownUpdated((_ctx, markdown) => {
@@ -47,6 +70,10 @@ const { loading } = useEditor((root) => {
   crepeRef.value = crepe
   return crepe
 })
+
+function insertDrawing() {
+  crepeRef.value?.editor.action(callCommand(insertDrawingCommand.key))
+}
 
 watch(
   () => props.modelValue,
@@ -70,15 +97,34 @@ watch(
 
 <template>
   <div
-    :class="
-      cn(
-        'milkdown-editor absolute inset-0 h-full min-h-0 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
-        disabled && 'cursor-not-allowed opacity-50',
-        $props.class,
-      )
-    "
+    ref="overlayRoot"
+    class="absolute inset-0 flex min-h-0 flex-col"
   >
-    <Milkdown spellcheck="false" />
+    <div class="flex shrink-0 items-center gap-1 border-b px-4 py-2">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        class="h-8 gap-1.5 px-2 text-base"
+        :disabled="disabled"
+        title="Insert sketch"
+        @click="insertDrawing"
+      >
+        <Pencil class="size-4" />
+        Sketch
+      </Button>
+    </div>
+    <div
+      :class="
+        cn(
+          'milkdown-editor min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
+          disabled && 'cursor-not-allowed opacity-50',
+          $props.class,
+        )
+      "
+    >
+      <Milkdown spellcheck="false" />
+    </div>
   </div>
 </template>
 
@@ -107,5 +153,9 @@ watch(
 .milkdown-editor :deep(.milkdown .ProseMirror > .prosemirror-virtual-cursor + *),
 .milkdown-editor :deep(.milkdown .ProseMirror > h1:first-of-type) {
   margin-top: 0;
+}
+
+.milkdown-editor :deep(figure.sketch) {
+  margin: 0;
 }
 </style>

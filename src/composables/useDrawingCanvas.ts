@@ -1,6 +1,6 @@
 import { onBeforeUnmount, ref, type Ref } from 'vue'
 import * as d3 from 'd3'
-import type { DrawingLine } from '@/lib/tiptap/drawingTypes'
+import type { DrawingLine } from '@/lib/drawing/drawingTypes'
 
 export function useDrawingCanvas(
   canvas: Ref<SVGSVGElement | null>,

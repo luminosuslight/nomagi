@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DrawingLine } from '@/lib/tiptap/drawingTypes'
+import type { DrawingLine } from '@/lib/drawing/drawingTypes'
 
 defineProps<{
   lines: DrawingLine[]

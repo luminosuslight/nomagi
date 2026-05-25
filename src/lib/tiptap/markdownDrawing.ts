@@ -1,5 +1,10 @@
 import TurndownService from 'turndown'
-import { svgMarkupFromLines, type DrawingLine } from '@/lib/tiptap/drawingTypes'
+import type { DrawingLine } from '@/lib/drawing/drawingTypes'
+import {
+  drawingMarkdownFromLines,
+  figureHtmlFromLines,
+  linesFromFigureHtml,
+} from '@/lib/drawing/figureMarkdown'
 
 function drawingMarkdownFromNode(node: HTMLElement): string {
   const svg = node.querySelector('svg')
@@ -8,8 +13,10 @@ function drawingMarkdownFromNode(node: HTMLElement): string {
   }
 
   const lines = JSON.parse(node.getAttribute('data-lines') ?? '[]') as DrawingLine[]
-  return `\n\n<figure data-type="drawing" class="sketch">\n${svgMarkupFromLines(lines)}\n</figure>\n\n`
+  return drawingMarkdownFromLines(lines)
 }
+
+export { figureHtmlFromLines, linesFromFigureHtml }
 
 export function createTurndownService(): TurndownService {
   const turndown = new TurndownService({
@@ -26,8 +33,6 @@ export function createTurndownService(): TurndownService {
 
   turndown.escape = (string: string) => string
 
-  // SVG-only figures are treated as blank, so the rule above is the main path.
-  // This covers any non-blank drawing figure edge cases.
   turndown.addRule('drawing', {
     filter: (node) =>
       node.nodeName === 'FIGURE' &&

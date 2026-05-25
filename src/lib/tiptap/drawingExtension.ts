@@ -5,7 +5,8 @@ import {
   DRAWING_VIEWBOX,
   linesFromSvg,
   type DrawingLine,
-} from '@/lib/tiptap/drawingTypes'
+} from '@/lib/drawing/drawingTypes'
+import { shouldStopDrawingEvent } from '@/lib/drawing/pointerEvents'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -14,20 +15,6 @@ declare module '@tiptap/core' {
     }
   }
 }
-
-const DRAWING_POINTER_EVENTS = new Set([
-  'mousedown',
-  'mouseup',
-  'mousemove',
-  'touchstart',
-  'touchend',
-  'touchmove',
-  'touchcancel',
-  'pointerdown',
-  'pointerup',
-  'pointermove',
-  'pointercancel',
-])
 
 export const Drawing = Node.create({
   name: 'drawing',
@@ -97,24 +84,7 @@ export const Drawing = Node.create({
 
   addNodeView() {
     return VueNodeViewRenderer(DrawingNodeView, {
-      stopEvent: ({ event }) => {
-        const target = event.target
-        if (!(target instanceof Element)) return false
-
-        if (target.closest('[data-drawing-canvas]')) {
-          return DRAWING_POINTER_EVENTS.has(event.type)
-        }
-
-        if (target.closest('[data-drawing-controls]') || target.closest('[data-drawing-edit]')) {
-          return event.type === 'mousedown' || event.type === 'touchstart' || event.type === 'pointerdown'
-        }
-
-        if (target.closest('[data-drawing-editor]')) {
-          return DRAWING_POINTER_EVENTS.has(event.type)
-        }
-
-        return false
-      },
+      stopEvent: ({ event }) => shouldStopDrawingEvent(event),
     })
   },
 
