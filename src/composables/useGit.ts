@@ -94,6 +94,7 @@ const isCloned = ref(false)
 const syncStatus = ref<SyncStatus>('idle')
 const lastError = ref<string | null>(null)
 const isBusy = ref(false)
+const hasUnpushedCommits = ref(false)
 
 let gitLock: Promise<void> = Promise.resolve()
 
@@ -127,6 +128,7 @@ async function refreshCommitState() {
   try {
     const head = await resolveHeadOid()
     lastPushedCommitOid = localStorage.getItem(pushedOidStorageKey()) ?? head
+    hasUnpushedCommits.value = head !== lastPushedCommitOid
 
     const commits = await git.log({ fs, dir: REPO_DIR, depth: 1 })
     lastLocalCommitAt =
@@ -275,7 +277,7 @@ export function useGit() {
       author: settings.author,
       amend,
     })
-    lastLocalCommitAt = Date.now()
+    await refreshCommitState()
     console.log(amend ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
   }
 
@@ -324,6 +326,7 @@ export function useGit() {
     syncStatus,
     lastError,
     isBusy,
+    hasUnpushedCommits,
     checkCloned,
     updateSettings,
     clone,

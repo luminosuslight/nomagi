@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGit } from './useGit'
 import { errorMessage, reportError } from '@/lib/errors'
 
@@ -29,18 +29,32 @@ export function useNotes() {
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
   let skipSave = false
-  let lastPersistedContent = ''
+  const lastPersistedContent = ref('')
   let lastEditAt = 0
+  const hasPendingSave = ref(false)
+
+  const hasUnsyncedChanges = computed(
+    () =>
+      git.hasUnpushedCommits.value || hasLocalEdits.value || hasPendingSave.value,
+  )
+
+  const hasLocalEdits = computed(
+    () =>
+      !isLoadingContent.value &&
+      selectedFile.value !== null &&
+      content.value !== lastPersistedContent.value.value,
+  )
 
   function clearSaveTimer() {
     if (saveTimer) {
       clearTimeout(saveTimer)
       saveTimer = null
     }
+    hasPendingSave.value = false
   }
 
   function isDirty(): boolean {
-    return !skipSave && selectedFile.value !== null && content.value !== lastPersistedContent
+    return !skipSave && selectedFile.value !== null && content.value !== lastPersistedContent.value
   }
 
   function isEditingActive(): boolean {
@@ -58,7 +72,7 @@ export function useNotes() {
 
     try {
       await git.writeFile(selectedFile.value!, content.value)
-      lastPersistedContent = content.value
+      lastPersistedContent.value = content.value
     } catch (err) {
       reportError('save', err)
       saveError.value = errorMessage(err)
@@ -76,8 +90,10 @@ export function useNotes() {
   function scheduleCommit() {
     if (!selectedFile.value || skipSave) return
     clearSaveTimer()
+    hasPendingSave.value = true
     saveTimer = setTimeout(() => {
       saveTimer = null
+      hasPendingSave.value = false
       void persistIfDirty().catch((err) => reportError('auto-save', err))
     }, COMMIT_DEBOUNCE_MS)
   }
@@ -88,7 +104,7 @@ export function useNotes() {
     skipSave = true
     try {
       content.value = await git.readFile(selectedFile.value)
-      lastPersistedContent = content.value
+      lastPersistedContent.value = content.value
     } catch (err) {
       reportError('readFile', err)
       saveError.value = errorMessage(err)
@@ -131,7 +147,7 @@ export function useNotes() {
   async function openFile(filepath: string, prevFilepath: string | null = null) {
     if (prevFilepath && prevFilepath !== filepath) {
       clearSaveTimer()
-      if (!skipSave && content.value !== lastPersistedContent) {
+      if (!skipSave && content.value !== lastPersistedContent.value) {
         isSaving.value = true
         saveError.value = null
         try {
@@ -152,12 +168,12 @@ export function useNotes() {
 
     try {
       content.value = await git.readFile(filepath)
-      lastPersistedContent = content.value
+      lastPersistedContent.value = content.value
     } catch (err) {
       reportError('readFile', err)
       saveError.value = errorMessage(err)
       content.value = ''
-      lastPersistedContent = ''
+      lastPersistedContent.value = ''
     } finally {
       isLoadingContent.value = false
       skipSave = false
@@ -204,6 +220,7 @@ export function useNotes() {
     isLoadingContent,
     isSaving,
     saveError,
+    hasUnsyncedChanges,
     refreshFiles,
     selectFile: openFile,
     flush,

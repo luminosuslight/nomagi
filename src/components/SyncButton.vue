@@ -7,6 +7,7 @@ defineProps<{
   syncStatus: SyncStatus
   isBusy: boolean
   isOnline: boolean
+  hasUnsyncedChanges?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -15,22 +16,30 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Button
-    type="button"
-    variant="outline"
-    class="w-full"
-    :disabled="isBusy || !isOnline"
-    @click="emit('sync')"
-  >
-    <RefreshCw :class="['size-4', syncStatus === 'syncing' && 'animate-spin']" />
-    Sync
-    <Wifi
-      v-if="isOnline"
-      class="size-3.5 ml-auto text-muted-foreground"
+  <div class="flex items-center gap-2">
+    <span
+      v-if="hasUnsyncedChanges"
+      class="size-2 shrink-0 rounded-full bg-amber-500"
+      title="Unsynced changes"
+      aria-label="Unsynced changes"
     />
-    <WifiOff
-      v-else
-      class="size-3.5 ml-auto text-muted-foreground"
-    />
-  </Button>
+    <Button
+      type="button"
+      variant="outline"
+      class="min-w-0 flex-1"
+      :disabled="isBusy || !isOnline"
+      @click="emit('sync')"
+    >
+      <RefreshCw :class="['size-4', syncStatus === 'syncing' && 'animate-spin']" />
+      Sync
+      <Wifi
+        v-if="isOnline"
+        class="ml-auto size-3.5 text-muted-foreground"
+      />
+      <WifiOff
+        v-else
+        class="ml-auto size-3.5 text-muted-foreground"
+      />
+    </Button>
+  </div>
 </template>

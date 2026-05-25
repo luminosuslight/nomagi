@@ -27,6 +27,7 @@ const {
   isLoadingFiles,
   isLoadingContent,
   isSaving,
+  hasUnsyncedChanges,
   checkCloned,
   updateSettings,
   clone,
@@ -164,6 +165,7 @@ onUnmounted(() => {
           :sync-status="syncStatus"
           :is-busy="isBusy"
           :is-online="isOnline"
+          :has-unsynced-changes="hasUnsyncedChanges"
           @sync="handleSync(true)"
         />
       </div>
