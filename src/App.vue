@@ -103,6 +103,7 @@ onMounted(async () => {
   await checkCloned()
   if (isCloned.value) {
     await refreshFiles()
+    if (navigator.onLine) void handleSync(false)
   } else {
     settingsOpen.value = true
   }
