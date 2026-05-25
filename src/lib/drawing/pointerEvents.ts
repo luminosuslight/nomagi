@@ -1,3 +1,9 @@
+export function coalescedPointerEvents(event: PointerEvent): PointerEvent[] {
+  const coalesced = event.getCoalescedEvents?.()
+  if (coalesced && coalesced.length > 0) return coalesced
+  return [event]
+}
+
 export const DRAWING_POINTER_EVENTS = new Set([
   'mousedown',
   'mouseup',

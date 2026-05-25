@@ -1,6 +1,7 @@
 import { onBeforeUnmount, ref, type Ref } from 'vue'
 import * as d3 from 'd3'
 import type { DrawingLine } from '@/lib/drawing/drawingTypes'
+import { coalescedPointerEvents } from '@/lib/drawing/pointerEvents'
 
 export function useDrawingCanvas(
   canvas: Ref<SVGSVGElement | null>,
@@ -26,6 +27,23 @@ export function useDrawingCanvas(
 
     const point = d3.pointer(event, canvas.value)
     return [point[0], point[1]]
+  }
+
+  function appendPointerSamples(event: PointerEvent): boolean {
+    let added = false
+
+    for (const sample of coalescedPointerEvents(event)) {
+      const position = pointerPosition(sample)
+      if (!position) continue
+
+      const last = points.value.at(-1)
+      if (last && last[0] === position[0] && last[1] === position[1]) continue
+
+      points.value.push(position)
+      added = true
+    }
+
+    return added
   }
 
   function commitStroke(strokePoints: [number, number][]) {
@@ -66,6 +84,9 @@ export function useDrawingCanvas(
       .attr('stroke-linecap', 'round')
       .attr('stroke-linejoin', 'round')
       .attr('pointer-events', 'none')
+
+    appendPointerSamples(event)
+    if (points.value.length > 0) tick()
   }
 
   function onMove(event: PointerEvent) {
@@ -74,10 +95,8 @@ export function useDrawingCanvas(
     event.preventDefault()
     event.stopPropagation()
 
-    const position = pointerPosition(event)
-    if (!position) return
+    if (!appendPointerSamples(event)) return
 
-    points.value.push(position)
     tick()
   }
 
@@ -92,6 +111,7 @@ export function useDrawingCanvas(
 
     if (!drawing.value) return
 
+    appendPointerSamples(event)
     commitStroke(points.value)
     drawing.value = false
     svg.value?.select(`#id-${strokeId.value}`).remove()
