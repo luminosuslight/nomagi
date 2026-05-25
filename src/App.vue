@@ -33,6 +33,7 @@ const {
   sync,
   refreshFiles,
   selectFile: loadFile,
+  flush,
   createFile,
 } = useNotes()
 
@@ -57,6 +58,7 @@ async function handleClone(next: GitSettings) {
 
 async function handleSync() {
   try {
+    await flush()
     await sync()
     await refreshFiles()
     if (selectedFile.value) {

@@ -197,6 +197,7 @@ export function useGit() {
     return pfs.readFile(`${REPO_DIR}/${filepath}`, 'utf8')
   }
 
+  /** Write file to disk and create a local git commit. */
   async function writeFile(filepath: string, content: string) {
     await pfs.writeFile(`${REPO_DIR}/${filepath}`, content, 'utf8')
     await commitFile(filepath)

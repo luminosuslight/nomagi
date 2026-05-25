@@ -1,7 +1,14 @@
-import { ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGit } from './useGit'
 import { errorMessage, reportError } from '@/lib/errors'
 
+const COMMIT_DEBOUNCE_MS = 500
+
+/**
+ * Commit strategy: debounce edits (500ms), then write + commit if dirty.
+ * flush() cancels the timer and commits immediately — used when switching
+ * files or hiding the tab so recent edits aren't left uncommitted.
+ */
 export function useNotes() {
   const git = useGit()
   const files = ref<string[]>([])
@@ -14,6 +21,50 @@ export function useNotes() {
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
   let skipSave = false
+  let lastPersistedContent = ''
+
+  function clearSaveTimer() {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = null
+    }
+  }
+
+  function isDirty(): boolean {
+    return !skipSave && selectedFile.value !== null && content.value !== lastPersistedContent
+  }
+
+  async function persistIfDirty() {
+    if (!isDirty()) return
+
+    isSaving.value = true
+    saveError.value = null
+
+    try {
+      await git.writeFile(selectedFile.value!, content.value)
+      lastPersistedContent = content.value
+    } catch (err) {
+      reportError('save', err)
+      saveError.value = errorMessage(err)
+      throw err
+    } finally {
+      isSaving.value = false
+    }
+  }
+
+  async function flush() {
+    clearSaveTimer()
+    await persistIfDirty()
+  }
+
+  function scheduleCommit() {
+    if (!selectedFile.value || skipSave) return
+    clearSaveTimer()
+    saveTimer = setTimeout(() => {
+      saveTimer = null
+      void persistIfDirty().catch((err) => reportError('auto-save', err))
+    }, COMMIT_DEBOUNCE_MS)
+  }
 
   async function refreshFiles() {
     if (!git.isCloned.value) {
@@ -35,55 +86,48 @@ export function useNotes() {
     }
   }
 
-  async function selectFile(filepath: string) {
-    selectedFile.value = filepath
+  async function openFile(filepath: string, prevFilepath: string | null = null) {
+    if (prevFilepath && prevFilepath !== filepath) {
+      clearSaveTimer()
+      if (!skipSave && content.value !== lastPersistedContent) {
+        isSaving.value = true
+        saveError.value = null
+        try {
+          await git.writeFile(prevFilepath, content.value)
+        } catch (err) {
+          reportError('save', err)
+          saveError.value = errorMessage(err)
+          throw err
+        } finally {
+          isSaving.value = false
+        }
+      }
+    }
+
     isLoadingContent.value = true
     saveError.value = null
     skipSave = true
 
     try {
       content.value = await git.readFile(filepath)
+      lastPersistedContent = content.value
     } catch (err) {
       reportError('readFile', err)
       saveError.value = errorMessage(err)
       content.value = ''
+      lastPersistedContent = ''
     } finally {
       isLoadingContent.value = false
       skipSave = false
     }
   }
 
-  async function saveNow() {
-    if (!selectedFile.value || skipSave) return
-
-    isSaving.value = true
-    saveError.value = null
-
-    try {
-      await git.writeFile(selectedFile.value, content.value)
-    } catch (err) {
-      reportError('save', err)
-      saveError.value = errorMessage(err)
-      throw err
-    } finally {
-      isSaving.value = false
-    }
-  }
-
-  function scheduleSave() {
-    if (!selectedFile.value || skipSave) return
-    if (saveTimer) clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => {
-      void saveNow().catch((err) => reportError('auto-save', err))
-    }, 500)
-  }
-
   watch(content, () => {
-    scheduleSave()
+    scheduleCommit()
   })
 
-  watch(selectedFile, (filepath) => {
-    if (filepath) void selectFile(filepath)
+  watch(selectedFile, (filepath, prevFilepath) => {
+    if (filepath) void openFile(filepath, prevFilepath ?? null)
   })
 
   async function createFile(name: string) {
@@ -92,6 +136,21 @@ export function useNotes() {
     selectedFile.value = filename
     return filename
   }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === 'hidden') {
+      void flush().catch((err) => reportError('flush', err))
+    }
+  }
+
+  onMounted(() => {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+  })
+
+  onUnmounted(() => {
+    clearSaveTimer()
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  })
 
   return {
     ...git,
@@ -103,8 +162,8 @@ export function useNotes() {
     isSaving,
     saveError,
     refreshFiles,
-    selectFile,
-    saveNow,
+    selectFile: openFile,
+    flush,
     createFile,
   }
 }
