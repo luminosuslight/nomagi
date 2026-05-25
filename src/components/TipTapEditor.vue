@@ -83,6 +83,9 @@ watch(
 
 <style scoped>
 .tiptap-editor :deep(.ProseMirror) {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
   min-height: 100%;
 }
 

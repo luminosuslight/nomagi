@@ -84,17 +84,28 @@ watch(
 
 <style scoped>
 .milkdown-editor :deep(.milkdown),
-.milkdown-editor :deep(.ProseMirror) {
+.milkdown-editor :deep(.milkdown .ProseMirror) {
   min-height: 100%;
   font-size: 1rem;
   outline: none;
 }
 
 .milkdown-editor :deep(.milkdown) {
+  width: 100%;
   padding-top: 0;
 }
 
-.milkdown-editor :deep(.ProseMirror) {
-  padding-top: 0.25rem;
+.milkdown-editor :deep(.milkdown .ProseMirror) {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding: 0.25rem 0 0;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror > :first-child),
+.milkdown-editor :deep(.milkdown .ProseMirror > .ProseMirror-widget + *),
+.milkdown-editor :deep(.milkdown .ProseMirror > .prosemirror-virtual-cursor + *),
+.milkdown-editor :deep(.milkdown .ProseMirror > h1:first-of-type) {
+  margin-top: 0;
 }
 </style>
