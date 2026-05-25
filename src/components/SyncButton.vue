@@ -3,12 +3,16 @@ import { RefreshCw, Wifi, WifiOff } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import type { SyncStatus } from '@/composables/useGit'
 
-defineProps<{
-  syncStatus: SyncStatus
-  isBusy: boolean
-  isOnline: boolean
-  hasUnsyncedChanges?: boolean
-}>()
+withDefaults(
+  defineProps<{
+    syncStatus: SyncStatus
+    isBusy: boolean
+    isOnline: boolean
+    hasUnsyncedChanges?: boolean
+    compact?: boolean
+  }>(),
+  { compact: false },
+)
 
 const emit = defineEmits<{
   sync: []
@@ -24,6 +28,19 @@ const emit = defineEmits<{
       aria-label="Unpushed commits"
     />
     <Button
+      v-if="compact"
+      type="button"
+      variant="ghost"
+      size="icon"
+      :disabled="isBusy || !isOnline"
+      :title="isOnline ? 'Sync' : 'Offline'"
+      aria-label="Sync"
+      @click="emit('sync')"
+    >
+      <RefreshCw :class="['size-4', syncStatus === 'syncing' && 'animate-spin']" />
+    </Button>
+    <Button
+      v-else
       type="button"
       variant="outline"
       class="min-w-0 flex-1"

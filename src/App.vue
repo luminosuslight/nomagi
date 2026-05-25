@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { errorMessage, reportError } from '@/lib/errors'
 import { formatRelativeTime } from '@/lib/formatRelativeTime'
-import { FileText, Pencil, Plus, Settings } from 'lucide-vue-next'
+import { Plus, Settings } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
 import Separator from '@/components/ui/Separator.vue'
@@ -134,7 +134,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-dvh flex-col md:flex-row pb-14 md:pb-0">
+  <div class="flex h-dvh flex-col md:flex-row">
     <aside
       :class="
         cn(
@@ -143,18 +143,28 @@ onUnmounted(() => {
         )
       "
     >
-      <div class="flex items-center justify-between px-4 py-3">
+      <div class="flex items-center justify-between gap-2 px-4 py-3">
         <h1 class="text-base font-semibold">
           Git Notes
         </h1>
-        <Button
-          variant="ghost"
-          size="icon"
-          type="button"
-          @click="settingsOpen = true"
-        >
-          <Settings class="size-4" />
-        </Button>
+        <div class="flex items-center gap-1">
+          <SyncButton
+            compact
+            :sync-status="syncStatus"
+            :is-busy="isBusy"
+            :is-online="isOnline"
+            :has-unsynced-changes="hasUnsyncedChanges"
+            @sync="handleSync(true)"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            @click="settingsOpen = true"
+          >
+            <Settings class="size-4" />
+          </Button>
+        </div>
       </div>
       <Separator />
       <div class="p-3 pb-0">
@@ -192,15 +202,6 @@ onUnmounted(() => {
         :selected-file="selectedFile"
         @select="selectFile"
       />
-      <div class="mt-auto border-t p-3">
-        <SyncButton
-          :sync-status="syncStatus"
-          :is-busy="isBusy"
-          :is-online="isOnline"
-          :has-unsynced-changes="hasUnsyncedChanges"
-          @sync="handleSync(true)"
-        />
-      </div>
     </aside>
 
     <main
@@ -216,37 +217,10 @@ onUnmounted(() => {
         :filename="selectedFile"
         :is-loading="isLoadingContent"
         :is-saving="isSaving"
+        :show-back="mobileView === 'editor'"
+        @back="mobileView = 'files'"
       />
     </main>
-
-    <nav class="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background md:hidden">
-      <button
-        type="button"
-        :class="
-          cn(
-            'flex flex-1 flex-col items-center gap-1 py-2 text-xs',
-            mobileView === 'files' ? 'text-foreground' : 'text-muted-foreground',
-          )
-        "
-        @click="mobileView = 'files'"
-      >
-        <FileText class="size-5" />
-        Files
-      </button>
-      <button
-        type="button"
-        :class="
-          cn(
-            'flex flex-1 flex-col items-center gap-1 py-2 text-xs',
-            mobileView === 'editor' ? 'text-foreground' : 'text-muted-foreground',
-          )
-        "
-        @click="mobileView = 'editor'"
-      >
-        <Pencil class="size-5" />
-        Editor
-      </button>
-    </nav>
 
     <SettingsDialog
       v-model="settingsOpen"
@@ -260,7 +234,6 @@ onUnmounted(() => {
 
   <Toaster
     position="bottom-center"
-    :mobile-offset="{ bottom: '5rem' }"
     rich-colors
   />
 </template>
