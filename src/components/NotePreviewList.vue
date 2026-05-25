@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
-import { formatRelativeTime } from '@/lib/formatRelativeTime'
+import { displayFilename } from '@/lib/noteDisplay'
 import ScrollArea from '@/components/ui/ScrollArea.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
-import type { RecentNote } from '@/composables/useGit'
+
+export type NotePreviewItem = {
+  filepath: string
+  preview: string
+  subtitle?: string | null
+}
 
 defineProps<{
-  notes: RecentNote[]
+  items: NotePreviewItem[]
   selectedFile: string | null
   isLoading: boolean
+  emptyMessage?: string
 }>()
 
 const emit = defineEmits<{
@@ -25,30 +31,39 @@ const emit = defineEmits<{
       <Skeleton
         v-for="n in 5"
         :key="n"
-        class="h-10 w-full"
+        class="h-14 w-full"
       />
     </div>
     <ul
-      v-else-if="notes.length"
+      v-else-if="items.length"
       class="space-y-1 p-2"
     >
       <li
-        v-for="note in notes"
-        :key="note.filepath"
+        v-for="item in items"
+        :key="item.filepath"
       >
         <button
           type="button"
           :class="
             cn(
               'w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-accent',
-              selectedFile === note.filepath && 'bg-accent font-medium',
+              selectedFile === item.filepath && 'bg-accent font-medium',
             )
           "
-          @click="emit('select', note.filepath)"
+          @click="emit('select', item.filepath)"
         >
-          <span class="block truncate text-sm">{{ note.filepath }}</span>
-          <span class="block text-sm text-muted-foreground">
-            {{ formatRelativeTime(note.lastModified) }}
+          <span
+            v-if="displayFilename(item.filepath)"
+            class="block truncate text-sm text-muted-foreground"
+          >
+            {{ displayFilename(item.filepath) }}
+          </span>
+          <span class="block truncate text-base">{{ item.preview }}</span>
+          <span
+            v-if="item.subtitle"
+            class="block text-sm text-muted-foreground"
+          >
+            {{ item.subtitle }}
           </span>
         </button>
       </li>
@@ -57,7 +72,7 @@ const emit = defineEmits<{
       v-else
       class="p-4 text-sm text-muted-foreground"
     >
-      No notes found.
+      {{ emptyMessage ?? 'No notes found.' }}
     </p>
   </ScrollArea>
 </template>

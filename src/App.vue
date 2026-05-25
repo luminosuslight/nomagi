@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { errorMessage, reportError } from '@/lib/errors'
+import { formatRelativeTime } from '@/lib/formatRelativeTime'
 import { FileText, Pencil, Plus, Settings } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
 import Separator from '@/components/ui/Separator.vue'
 import FileList from '@/components/FileList.vue'
-import RecentNotesList from '@/components/RecentNotesList.vue'
-import SearchPlaceholder from '@/components/SearchPlaceholder.vue'
+import NotePreviewList from '@/components/NotePreviewList.vue'
+import SearchNotesPanel from '@/components/SearchNotesPanel.vue'
 import SidebarViewTabs, { type SidebarView } from '@/components/SidebarViewTabs.vue'
 import Editor from '@/components/Editor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
@@ -38,12 +39,21 @@ const {
   syncNotes,
   refreshFiles,
   createFile,
+  readFile,
 } = useNotes()
 
 const settingsOpen = ref(false)
-const sidebarView = ref<SidebarView>('files')
+const sidebarView = ref<SidebarView>('recent')
 const mobileView = ref<MobileView>('files')
 const isOnline = ref(navigator.onLine)
+
+const recentPreviewItems = computed(() =>
+  recentNotes.value.map((note) => ({
+    filepath: note.filepath,
+    preview: note.preview,
+    subtitle: formatRelativeTime(note.lastModified),
+  })),
+)
 
 let syncInterval: ReturnType<typeof setInterval> | null = null
 
@@ -77,11 +87,11 @@ function selectFile(file: string) {
 }
 
 async function handleNewFile() {
-  const name = window.prompt('New note filename', 'untitled.md')
-  if (!name) return
+  const name = window.prompt('New note filename', '')
+  if (name === null) return
 
   try {
-    const filename = await createFile(name)
+    const filename = await createFile(name.trim() || undefined)
     mobileView.value = 'editor'
     toast.success(`Created ${filename}`)
   } catch (err) {
@@ -168,14 +178,20 @@ onUnmounted(() => {
         :is-loading="isLoadingFiles"
         @select="selectFile"
       />
-      <RecentNotesList
+      <NotePreviewList
         v-else-if="sidebarView === 'recent'"
-        :notes="recentNotes"
+        :items="recentPreviewItems"
         :selected-file="selectedFile"
         :is-loading="isLoadingFiles"
         @select="selectFile"
       />
-      <SearchPlaceholder v-else />
+      <SearchNotesPanel
+        v-else
+        :files="files"
+        :read-file="readFile"
+        :selected-file="selectedFile"
+        @select="selectFile"
+      />
       <div class="mt-auto border-t p-3">
         <SyncButton
           :sync-status="syncStatus"
@@ -240,7 +256,6 @@ onUnmounted(() => {
       @save="updateSettings"
       @clone="handleClone"
     />
-
   </div>
 
   <Toaster

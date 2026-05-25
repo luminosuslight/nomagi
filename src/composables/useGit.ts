@@ -85,6 +85,39 @@ export function normalizeMarkdownFilename(name: string): string {
   return trimmed.endsWith('.md') ? trimmed : `${trimmed}.md`
 }
 
+function padTwo(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+export function generateIsoDateFilename(now = new Date()): string {
+  const y = now.getFullYear()
+  const m = padTwo(now.getMonth() + 1)
+  const d = padTwo(now.getDate())
+  const h = padTwo(now.getHours())
+  const min = padTwo(now.getMinutes())
+  const s = padTwo(now.getSeconds())
+  return `${y}-${m}-${d}T${h}-${min}-${s}.md`
+}
+
+export function uniqueIsoDateFilename(existingFiles: Iterable<string>, now = new Date()): string {
+  const existing = new Set(existingFiles)
+  const base = generateIsoDateFilename(now)
+  if (!existing.has(base)) return base
+
+  let suffix = 2
+  while (true) {
+    const candidate = base.replace(/\.md$/, `-${suffix}.md`)
+    if (!existing.has(candidate)) return candidate
+    suffix++
+  }
+}
+
+export function resolveNewNoteFilename(input: string | undefined, existingFiles: string[]): string {
+  const trimmed = input?.trim() ?? ''
+  if (!trimmed) return uniqueIsoDateFilename(existingFiles)
+  return normalizeMarkdownFilename(trimmed)
+}
+
 async function repoExists(): Promise<boolean> {
   try {
     await pfs.stat(`${REPO_DIR}/.git`)
@@ -92,6 +125,12 @@ async function repoExists(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+const afterCommitListeners = new Set<() => void | Promise<void>>()
+
+async function notifyAfterCommit() {
+  await Promise.all([...afterCommitListeners].map((listener) => listener()))
 }
 
 const settings = reactive(loadSettings())
@@ -285,6 +324,7 @@ export function useGit() {
     })
     await refreshCommitState()
     console.log(amend ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
+    await notifyAfterCommit()
   }
 
   async function listMarkdownFiles(): Promise<string[]> {
@@ -330,8 +370,9 @@ export function useGit() {
     })
   }
 
-  async function createFile(filepath: string, content = '') {
-    const filename = normalizeMarkdownFilename(filepath)
+  async function createFile(filepath?: string, content = '') {
+    const existing = await listMarkdownFiles()
+    const filename = resolveNewNoteFilename(filepath, existing)
 
     try {
       await pfs.stat(`${REPO_DIR}/${filename}`)
@@ -342,6 +383,11 @@ export function useGit() {
 
     await writeFile(filename, content)
     return filename
+  }
+
+  function onAfterCommit(listener: () => void | Promise<void>) {
+    afterCommitListeners.add(listener)
+    return () => afterCommitListeners.delete(listener)
   }
 
   return {
@@ -361,5 +407,6 @@ export function useGit() {
     readFile,
     writeFile,
     createFile,
+    onAfterCommit,
   }
 }

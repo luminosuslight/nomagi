@@ -1,6 +1,10 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGit } from './useGit'
 import { errorMessage, reportError } from '@/lib/errors'
+import { previewFromContent } from '@/lib/noteDisplay'
+import type { RecentNote } from './useGit'
+
+type RecentNoteWithPreview = RecentNote & { preview: string }
 
 const COMMIT_DEBOUNCE_MS = 500
 /** Auto-sync is deferred while the user edited within this window. */
@@ -20,7 +24,7 @@ const SYNC_SKIP_EDIT_MS = 2_000
 export function useNotes() {
   const git = useGit()
   const files = ref<string[]>([])
-  const recentNotes = ref<{ filepath: string; lastModified: number }[]>([])
+  const recentNotes = ref<RecentNoteWithPreview[]>([])
   const selectedFile = ref<string | null>(null)
   const content = ref('')
   const isLoadingFiles = ref(false)
@@ -110,6 +114,25 @@ export function useNotes() {
     return {}
   }
 
+  async function refreshRecentNotes() {
+    if (!git.isCloned.value) {
+      recentNotes.value = []
+      return
+    }
+
+    const byRecent = await git.listRecentNotes()
+    recentNotes.value = await Promise.all(
+      byRecent.map(async (note) => {
+        try {
+          const text = await git.readFile(note.filepath)
+          return { ...note, preview: previewFromContent(text) }
+        } catch {
+          return { ...note, preview: 'Empty note' }
+        }
+      }),
+    )
+  }
+
   async function refreshFiles() {
     if (!git.isCloned.value) {
       files.value = []
@@ -119,22 +142,19 @@ export function useNotes() {
 
     isLoadingFiles.value = true
     try {
-      const [allFiles, byRecent] = await Promise.all([
-        git.listMarkdownFiles(),
-        git.listRecentNotes(),
-      ])
-      files.value = allFiles
-      recentNotes.value = byRecent
+      files.value = await git.listMarkdownFiles()
+      await refreshRecentNotes()
       if (selectedFile.value && !files.value.includes(selectedFile.value)) {
-        selectedFile.value = files.value[0] ?? null
-      }
-      if (!selectedFile.value && files.value.length > 0) {
-        selectedFile.value = files.value[0]
+        selectedFile.value = null
       }
     } finally {
       isLoadingFiles.value = false
     }
   }
+
+  git.onAfterCommit(() => {
+    void refreshRecentNotes().catch((err) => reportError('refreshRecent', err))
+  })
 
   async function openFile(filepath: string, prevFilepath: string | null = null) {
     if (prevFilepath && prevFilepath !== filepath) {
@@ -181,9 +201,9 @@ export function useNotes() {
     if (filepath) void openFile(filepath, prevFilepath ?? null)
   })
 
-  async function createFile(name: string) {
+  async function createFile(name?: string) {
     const filename = await git.createFile(name, '')
-    await refreshFiles()
+    files.value = await git.listMarkdownFiles()
     selectedFile.value = filename
     return filename
   }
