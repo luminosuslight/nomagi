@@ -105,8 +105,12 @@ export const Drawing = Node.create({
           return DRAWING_POINTER_EVENTS.has(event.type)
         }
 
-        if (target.closest('[data-drawing-controls]')) {
+        if (target.closest('[data-drawing-controls]') || target.closest('[data-drawing-edit]')) {
           return event.type === 'mousedown' || event.type === 'touchstart' || event.type === 'pointerdown'
+        }
+
+        if (target.closest('[data-drawing-editor]')) {
+          return DRAWING_POINTER_EVENTS.has(event.type)
         }
 
         return false

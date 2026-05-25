@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { provide, ref, watch } from 'vue'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
@@ -8,6 +8,7 @@ import { Pencil } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { Drawing } from '@/lib/tiptap/drawingExtension'
 import { createTurndownService } from '@/lib/tiptap/markdownDrawing'
+import { tiptapEditorOverlayRootKey } from '@/lib/tiptap/editorOverlay'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<{
@@ -22,6 +23,9 @@ const emit = defineEmits<{
 }>()
 
 const turndown = createTurndownService()
+const overlayRoot = ref<HTMLElement | null>(null)
+
+provide(tiptapEditorOverlayRootKey, overlayRoot)
 
 function markdownToHtml(markdown: string) {
   if (!markdown) return ''
@@ -75,7 +79,10 @@ watch(
 </script>
 
 <template>
-  <div class="absolute inset-0 flex min-h-0 flex-col">
+  <div
+    ref="overlayRoot"
+    class="absolute inset-0 flex min-h-0 flex-col"
+  >
     <div
       v-if="editor"
       class="flex shrink-0 items-center gap-1 border-b px-4 py-2"
@@ -124,12 +131,6 @@ watch(
 }
 
 .tiptap-editor :deep(figure.sketch) {
-  margin: 1rem 0;
-}
-
-.tiptap-editor :deep(figure.sketch svg) {
-  width: 100%;
-  border-radius: 0.375rem;
-  background: color-mix(in oklab, var(--muted) 40%, transparent);
+  margin: 0;
 }
 </style>
