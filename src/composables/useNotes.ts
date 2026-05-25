@@ -15,6 +15,7 @@ const SYNC_SKIP_EDIT_MS = 2_000
  *
  * Sync: syncNotes({ auto }) — auto skips if isEditingActive() (SYNC_SKIP_EDIT_MS).
  * Manual sync always runs. Reload open file only if !isDirty() after sync.
+ * Merge conflicts in notes keep both sides (see notesMergeDriver).
  */
 export function useNotes() {
   const git = useGit()

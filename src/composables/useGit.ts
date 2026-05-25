@@ -3,6 +3,7 @@ import http from 'isomorphic-git/http/web'
 import LightningFS from '@isomorphic-git/lightning-fs'
 import { reactive, ref } from 'vue'
 import { errorMessage, reportError } from '@/lib/errors'
+import { notesMergeDriver } from '@/lib/notesMergeDriver'
 
 export type GitSettings = {
   repoUrl: string
@@ -193,6 +194,41 @@ export function useGit() {
     }
   }
 
+  async function pullWithNotesMerge() {
+    const branch = await git.currentBranch({ fs, dir: REPO_DIR })
+    if (!branch) throw new Error('No current branch')
+
+    const { fetchHead } = await git.fetch({
+      fs,
+      http,
+      dir: REPO_DIR,
+      corsProxy: corsProxy(settings),
+      headers: authHeaders(settings),
+      onAuth: auth(settings),
+      singleBranch: true,
+    })
+
+    if (!fetchHead) return
+
+    const head = await resolveHeadOid()
+    if (fetchHead === head) return
+
+    await git.merge({
+      fs,
+      dir: REPO_DIR,
+      ours: branch,
+      theirs: fetchHead,
+      fastForward: true,
+      fastForwardOnly: false,
+      abortOnConflict: false,
+      mergeDriver: notesMergeDriver,
+      author: settings.author,
+      committer: settings.author,
+    })
+
+    await git.checkout({ fs, dir: REPO_DIR, ref: branch })
+  }
+
   async function sync() {
     if (!isCloned.value || !navigator.onLine) return
 
@@ -202,16 +238,7 @@ export function useGit() {
 
     try {
       await withGitLock(async () => {
-        await git.pull({
-          fs,
-          http,
-          dir: REPO_DIR,
-          corsProxy: corsProxy(settings),
-          headers: authHeaders(settings),
-          onAuth: auth(settings),
-          fastForwardOnly: true,
-          author: settings.author,
-        })
+        await pullWithNotesMerge()
 
         await git.push({
           fs,
