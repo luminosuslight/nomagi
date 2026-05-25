@@ -1,0 +1,9 @@
+name: git-notes-client
+
+services:
+  web:
+    build: .
+    container_name: git_notes_client_web
+    ports:
+      - '${PROD_PORT:-55112}:80'
+    restart: unless-stopped

@@ -1,0 +1,19 @@
+[Unit]
+Description=Git Notes Client Production (Docker Compose, port {{ prod_port }})
+Requires=docker.service
+After=network.target docker.service
+
+[Service]
+User={{ service_user }}
+Group={{ service_user }}
+WorkingDirectory={{ project_dir }}
+EnvironmentFile={{ project_dir }}/.env
+ExecStartPre=/usr/bin/docker compose build
+ExecStart=/usr/bin/docker compose up --no-build --remove-orphans
+ExecStop=/usr/bin/docker compose down
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=60s
+
+[Install]
+WantedBy=multi-user.target
