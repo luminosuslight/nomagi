@@ -6,8 +6,9 @@ const COMMIT_DEBOUNCE_MS = 500
 
 /**
  * Commit strategy: debounce edits (500ms), then write + commit if dirty.
- * flush() cancels the timer and commits immediately — used when switching
- * files or hiding the tab so recent edits aren't left uncommitted.
+ * Commits within 1 min of the last (unpushed) commit amend it instead of
+ * creating a new one. flush() cancels the timer and commits immediately —
+ * used when switching files or hiding the tab.
  */
 export function useNotes() {
   const git = useGit()

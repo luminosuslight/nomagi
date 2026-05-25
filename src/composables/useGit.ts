@@ -15,6 +15,9 @@ export type SyncStatus = 'idle' | 'syncing' | 'error'
 
 const REPO_DIR = '/repo'
 const FS_NAME = 'git-notes-fs'
+/** Amend the previous commit when a new persist falls within this window. */
+export const COMMIT_AMEND_WINDOW_MS = 60_000
+const LAST_PUSHED_OID_KEY = 'lastPushedCommitOid'
 
 const fs = new LightningFS(FS_NAME)
 const pfs = fs.promises
@@ -91,9 +94,52 @@ const syncStatus = ref<SyncStatus>('idle')
 const lastError = ref<string | null>(null)
 const isBusy = ref(false)
 
+let lastLocalCommitAt: number | null = null
+let lastPushedCommitOid: string | null = null
+
+function pushedOidStorageKey(): string {
+  return `${LAST_PUSHED_OID_KEY}:${settings.repoUrl.trim()}`
+}
+
+function saveLastPushedCommitOid(oid: string) {
+  lastPushedCommitOid = oid
+  const repoUrl = settings.repoUrl.trim()
+  if (repoUrl) localStorage.setItem(pushedOidStorageKey(), oid)
+}
+
+async function resolveHeadOid(): Promise<string> {
+  return git.resolveRef({ fs, dir: REPO_DIR, ref: 'HEAD' })
+}
+
+async function refreshCommitState() {
+  try {
+    const head = await resolveHeadOid()
+    lastPushedCommitOid = localStorage.getItem(pushedOidStorageKey()) ?? head
+
+    const commits = await git.log({ fs, dir: REPO_DIR, depth: 1 })
+    lastLocalCommitAt =
+      commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : null
+  } catch {
+    lastLocalCommitAt = null
+  }
+}
+
+async function shouldAmendCommit(): Promise<boolean> {
+  if (!lastLocalCommitAt) return false
+  if (Date.now() - lastLocalCommitAt > COMMIT_AMEND_WINDOW_MS) return false
+
+  try {
+    const head = await resolveHeadOid()
+    return head !== lastPushedCommitOid
+  } catch {
+    return false
+  }
+}
+
 export function useGit() {
   async function checkCloned() {
     isCloned.value = await repoExists()
+    if (isCloned.value) await refreshCommitState()
     return isCloned.value
   }
 
@@ -126,6 +172,9 @@ export function useGit() {
         depth: 1,
       })
       isCloned.value = true
+      const head = await resolveHeadOid()
+      saveLastPushedCommitOid(head)
+      await refreshCommitState()
     } finally {
       isBusy.value = false
     }
@@ -159,6 +208,9 @@ export function useGit() {
         onAuth: auth(settings),
       })
 
+      saveLastPushedCommitOid(await resolveHeadOid())
+      await refreshCommitState()
+
       syncStatus.value = 'idle'
     } catch (err) {
       syncStatus.value = 'error'
@@ -172,12 +224,15 @@ export function useGit() {
 
   async function commitFile(filepath: string, message?: string) {
     await git.add({ fs, dir: REPO_DIR, filepath })
+    const amend = await shouldAmendCommit()
     await git.commit({
       fs,
       dir: REPO_DIR,
       message: message ?? `update ${filepath}`,
       author: settings.author,
+      amend,
     })
+    lastLocalCommitAt = Date.now()
   }
 
   async function listMarkdownFiles(): Promise<string[]> {
@@ -197,7 +252,7 @@ export function useGit() {
     return pfs.readFile(`${REPO_DIR}/${filepath}`, 'utf8')
   }
 
-  /** Write file to disk and create a local git commit. */
+  /** Write file to disk, then commit (amending if within the coalesce window and unpushed). */
   async function writeFile(filepath: string, content: string) {
     await pfs.writeFile(`${REPO_DIR}/${filepath}`, content, 'utf8')
     await commitFile(filepath)
