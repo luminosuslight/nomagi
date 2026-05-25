@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
 import Separator from '@/components/ui/Separator.vue'
 import FileList from '@/components/FileList.vue'
+import RecentNotesList from '@/components/RecentNotesList.vue'
+import SearchPlaceholder from '@/components/SearchPlaceholder.vue'
+import SidebarViewTabs, { type SidebarView } from '@/components/SidebarViewTabs.vue'
 import Editor from '@/components/Editor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import SyncButton from '@/components/SyncButton.vue'
@@ -22,6 +25,7 @@ const {
   syncStatus,
   isBusy,
   files,
+  recentNotes,
   selectedFile,
   content,
   isLoadingFiles,
@@ -37,6 +41,7 @@ const {
 } = useNotes()
 
 const settingsOpen = ref(false)
+const sidebarView = ref<SidebarView>('files')
 const mobileView = ref<MobileView>('files')
 const isOnline = ref(navigator.onLine)
 
@@ -154,12 +159,22 @@ onUnmounted(() => {
           New note
         </Button>
       </div>
+      <SidebarViewTabs v-model="sidebarView" />
       <FileList
+        v-if="sidebarView === 'files'"
         :files="files"
         :selected-file="selectedFile"
         :is-loading="isLoadingFiles"
         @select="selectFile"
       />
+      <RecentNotesList
+        v-else-if="sidebarView === 'recent'"
+        :notes="recentNotes"
+        :selected-file="selectedFile"
+        :is-loading="isLoadingFiles"
+        @select="selectFile"
+      />
+      <SearchPlaceholder v-else />
       <div class="mt-auto border-t p-3">
         <SyncButton
           :sync-status="syncStatus"

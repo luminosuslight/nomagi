@@ -14,6 +14,11 @@ export type GitSettings = {
 
 export type SyncStatus = 'idle' | 'syncing' | 'error'
 
+export type RecentNote = {
+  filepath: string
+  lastModified: number
+}
+
 const REPO_DIR = '/repo'
 const FS_NAME = 'git-notes-fs'
 /** Amend the previous commit when a new persist falls within this window. */
@@ -135,6 +140,7 @@ async function refreshCommitState() {
       commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : null
   } catch {
     lastLocalCommitAt = null
+    hasUnpushedCommits.value = false
   }
 }
 
@@ -294,6 +300,24 @@ export function useGit() {
     return files.sort()
   }
 
+  async function listRecentNotes(): Promise<RecentNote[]> {
+    const names = await listMarkdownFiles()
+    const withDates = await Promise.all(
+      names.map(async (filepath) => {
+        try {
+          const commits = await git.log({ fs, dir: REPO_DIR, filepath, depth: 1 })
+          const lastModified =
+            commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : 0
+          return { filepath, lastModified }
+        } catch {
+          return { filepath, lastModified: 0 }
+        }
+      }),
+    )
+
+    return withDates.sort((a, b) => b.lastModified - a.lastModified)
+  }
+
   async function readFile(filepath: string): Promise<string> {
     return pfs.readFile(`${REPO_DIR}/${filepath}`, 'utf8')
   }
@@ -333,6 +357,7 @@ export function useGit() {
     sync,
     commitFile,
     listMarkdownFiles,
+    listRecentNotes,
     readFile,
     writeFile,
     createFile,

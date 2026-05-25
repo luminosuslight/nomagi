@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
+import { formatRelativeTime } from '@/lib/formatRelativeTime'
 import ScrollArea from '@/components/ui/ScrollArea.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
+import type { RecentNote } from '@/composables/useGit'
 
 defineProps<{
-  files: string[]
+  notes: RecentNote[]
   selectedFile: string | null
   isLoading: boolean
-  emptyMessage?: string
 }>()
 
 const emit = defineEmits<{
@@ -24,28 +25,31 @@ const emit = defineEmits<{
       <Skeleton
         v-for="n in 5"
         :key="n"
-        class="h-8 w-full"
+        class="h-10 w-full"
       />
     </div>
     <ul
-      v-else-if="files.length"
-      class="p-2 space-y-1"
+      v-else-if="notes.length"
+      class="space-y-1 p-2"
     >
       <li
-        v-for="file in files"
-        :key="file"
+        v-for="note in notes"
+        :key="note.filepath"
       >
         <button
           type="button"
           :class="
             cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
-              selectedFile === file && 'bg-accent font-medium',
+              'w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-accent',
+              selectedFile === note.filepath && 'bg-accent font-medium',
             )
           "
-          @click="emit('select', file)"
+          @click="emit('select', note.filepath)"
         >
-          {{ file }}
+          <span class="block truncate text-sm">{{ note.filepath }}</span>
+          <span class="block text-sm text-muted-foreground">
+            {{ formatRelativeTime(note.lastModified) }}
+          </span>
         </button>
       </li>
     </ul>
@@ -53,7 +57,7 @@ const emit = defineEmits<{
       v-else
       class="p-4 text-sm text-muted-foreground"
     >
-      {{ emptyMessage ?? 'No markdown files found.' }}
+      No notes found.
     </p>
   </ScrollArea>
 </template>

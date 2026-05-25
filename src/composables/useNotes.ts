@@ -20,6 +20,7 @@ const SYNC_SKIP_EDIT_MS = 2_000
 export function useNotes() {
   const git = useGit()
   const files = ref<string[]>([])
+  const recentNotes = ref<{ filepath: string; lastModified: number }[]>([])
   const selectedFile = ref<string | null>(null)
   const content = ref('')
   const isLoadingFiles = ref(false)
@@ -42,7 +43,7 @@ export function useNotes() {
     () =>
       !isLoadingContent.value &&
       selectedFile.value !== null &&
-      content.value !== lastPersistedContent.value.value,
+      content.value !== lastPersistedContent.value,
   )
 
   function clearSaveTimer() {
@@ -127,12 +128,18 @@ export function useNotes() {
   async function refreshFiles() {
     if (!git.isCloned.value) {
       files.value = []
+      recentNotes.value = []
       return
     }
 
     isLoadingFiles.value = true
     try {
-      files.value = await git.listMarkdownFiles()
+      const [allFiles, byRecent] = await Promise.all([
+        git.listMarkdownFiles(),
+        git.listRecentNotes(),
+      ])
+      files.value = allFiles
+      recentNotes.value = byRecent
       if (selectedFile.value && !files.value.includes(selectedFile.value)) {
         selectedFile.value = files.value[0] ?? null
       }
@@ -214,6 +221,7 @@ export function useNotes() {
   return {
     ...git,
     files,
+    recentNotes,
     selectedFile,
     content,
     isLoadingFiles,
