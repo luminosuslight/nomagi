@@ -254,6 +254,7 @@ export function useGit() {
       })
 
       syncStatus.value = 'idle'
+      console.log('[git] sync complete')
     } catch (err) {
       syncStatus.value = 'error'
       lastError.value = errorMessage(err)
@@ -275,6 +276,7 @@ export function useGit() {
       amend,
     })
     lastLocalCommitAt = Date.now()
+    console.log(amend ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
   }
 
   async function listMarkdownFiles(): Promise<string[]> {
