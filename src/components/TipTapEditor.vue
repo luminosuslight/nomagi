@@ -4,7 +4,10 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { marked } from 'marked'
-import TurndownService from 'turndown'
+import { Pencil } from 'lucide-vue-next'
+import Button from '@/components/ui/Button.vue'
+import { Drawing } from '@/lib/tiptap/drawingExtension'
+import { createTurndownService } from '@/lib/tiptap/markdownDrawing'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<{
@@ -18,8 +21,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const turndown = new TurndownService({ headingStyle: 'atx' })
-turndown.escape = (string: string) => string
+const turndown = createTurndownService()
 
 function markdownToHtml(markdown: string) {
   if (!markdown) return ''
@@ -34,6 +36,7 @@ const editor = useEditor({
     Placeholder.configure({
       placeholder: props.placeholder ?? 'Start writing…',
     }),
+    Drawing,
   ],
   editorProps: {
     attributes: {
@@ -48,6 +51,10 @@ const editor = useEditor({
     emit('update:modelValue', markdown)
   },
 })
+
+function insertDrawing() {
+  editor.value?.chain().focus().insertDrawing().run()
+}
 
 watch(
   () => props.modelValue,
@@ -68,17 +75,36 @@ watch(
 </script>
 
 <template>
-  <EditorContent
-    :editor="editor"
-    spellcheck="false"
-    :class="
-      cn(
-        'tiptap-editor absolute inset-0 h-full min-h-0 overflow-y-auto px-4 py-3 text-base focus-visible:outline-none',
-        disabled && 'cursor-not-allowed opacity-50',
-        $props.class,
-      )
-    "
-  />
+  <div class="absolute inset-0 flex min-h-0 flex-col">
+    <div
+      v-if="editor"
+      class="flex shrink-0 items-center gap-1 border-b px-4 py-2"
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        class="h-8 gap-1.5 px-2 text-base"
+        :disabled="disabled"
+        title="Insert sketch"
+        @click="insertDrawing"
+      >
+        <Pencil class="size-4" />
+        Sketch
+      </Button>
+    </div>
+    <EditorContent
+      :editor="editor"
+      spellcheck="false"
+      :class="
+        cn(
+          'tiptap-editor min-h-0 flex-1 overflow-y-auto px-4 py-3 text-base focus-visible:outline-none',
+          disabled && 'cursor-not-allowed opacity-50',
+          $props.class,
+        )
+      "
+    />
+  </div>
 </template>
 
 <style scoped>
@@ -95,5 +121,15 @@ watch(
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+.tiptap-editor :deep(figure.sketch) {
+  margin: 1rem 0;
+}
+
+.tiptap-editor :deep(figure.sketch svg) {
+  width: 100%;
+  border-radius: 0.375rem;
+  background: color-mix(in oklab, var(--muted) 40%, transparent);
 }
 </style>
