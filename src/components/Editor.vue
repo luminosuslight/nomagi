@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Textarea from '@/components/ui/Textarea.vue'
+import TipTapEditor from '@/components/TipTapEditor.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 
 defineProps<{
@@ -36,10 +36,10 @@ defineEmits<{
       v-else
       class="relative min-h-0 flex-1"
     >
-      <Textarea
+      <TipTapEditor
+        :key="filename ?? 'none'"
         :model-value="modelValue"
         :disabled="!filename"
-        class="absolute inset-0 h-full min-h-0 w-full resize-none rounded-none border-0 shadow-none focus-visible:ring-0"
         placeholder="Start writing…"
         @update:model-value="$emit('update:modelValue', $event)"
       />
