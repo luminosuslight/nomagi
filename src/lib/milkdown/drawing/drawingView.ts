@@ -8,7 +8,7 @@ import DrawingBlock from '@/components/drawing/DrawingBlock.vue'
 import type { DrawingLine } from '@/lib/drawing/drawingTypes'
 import { shouldStopDrawingEvent } from '@/lib/drawing/pointerEvents'
 import { drawingSchema } from '@/lib/milkdown/drawing/drawingSchema'
-import { drawingOverlayRootCtx } from '@/lib/milkdown/drawing/overlayCtx'
+import { drawingEditingCtx, drawingOverlayRootCtx } from '@/lib/milkdown/drawing/overlayCtx'
 
 export const drawingView = $view(
   drawingSchema.node,
@@ -22,6 +22,7 @@ export const drawingView = $view(
       const editable = ref(view.editable)
       const selected = ref(false)
       const overlayRoot = ctx.get(drawingOverlayRootCtx.key)
+      const drawingEditing = ctx.get(drawingEditingCtx.key)
 
       const setLines = (nextLines: DrawingLine[]) => {
         if (!view.editable) return
@@ -36,6 +37,7 @@ export const drawingView = $view(
         lines,
         editable,
         overlayRoot,
+        drawingEditing,
         onUpdateLines: setLines,
       })
 

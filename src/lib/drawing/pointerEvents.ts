@@ -27,7 +27,7 @@ export function shouldStopDrawingEvent(event: Event): boolean {
   }
 
   if (target.closest('[data-drawing-controls]') || target.closest('[data-drawing-edit]')) {
-    return event.type === 'mousedown' || event.type === 'touchstart' || event.type === 'pointerdown'
+    return DRAWING_POINTER_EVENTS.has(event.type)
   }
 
   if (target.closest('[data-drawing-editor]')) {

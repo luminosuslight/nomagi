@@ -7,6 +7,7 @@ import { callCommand, replaceAll } from '@milkdown/kit/utils'
 import Button from '@/components/ui/Button.vue'
 import { editorOverlayRootKey } from '@/lib/editorOverlay'
 import {
+  drawingEditingCtx,
   drawingOverlayRootCtx,
   drawingRemark,
   drawingSchema,
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 
 const crepeRef = ref<Crepe>()
 const overlayRoot = ref<HTMLElement | null>(null)
+const drawingEditing = ref(false)
 let lastUserChange = 0
 
 provide(editorOverlayRootKey, overlayRoot)
@@ -48,8 +50,10 @@ const { loading } = useEditor((root) => {
 
   crepe.editor
     .use(drawingOverlayRootCtx)
+    .use(drawingEditingCtx)
     .config((ctx) => {
       ctx.set(drawingOverlayRootCtx.key, overlayRoot)
+      ctx.set(drawingEditingCtx.key, drawingEditing)
     })
     .use(drawingRemark)
     .use(drawingSchema)
@@ -118,6 +122,7 @@ watch(
       :class="
         cn(
           'milkdown-editor min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
+          drawingEditing && 'pointer-events-none overflow-hidden select-none',
           disabled && 'cursor-not-allowed opacity-50',
           $props.class,
         )

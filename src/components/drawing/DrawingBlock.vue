@@ -13,6 +13,7 @@ const props = defineProps<{
   lines: DrawingLine[] | Ref<DrawingLine[]>
   editable: boolean | Ref<boolean>
   overlayRoot?: HTMLElement | null | Ref<HTMLElement | null | null>
+  drawingEditing?: Ref<boolean> | null
   onUpdateLines: (lines: DrawingLine[]) => void
 }>()
 
@@ -71,6 +72,10 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 watch(editing, (isEditing) => {
+  if (props.drawingEditing) {
+    props.drawingEditing.value = isEditing
+  }
+
   if (isEditing) {
     requestAnimationFrame(() => bindCanvas())
     window.addEventListener('keydown', onKeydown)
@@ -86,6 +91,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  if (props.drawingEditing) {
+    props.drawingEditing.value = false
+  }
 })
 </script>
 
@@ -123,7 +131,7 @@ onUnmounted(() => {
     :to="overlayTarget"
   >
     <div
-      class="absolute inset-0 z-50 flex min-h-0 flex-col bg-background"
+      class="absolute inset-0 z-50 flex min-h-0 touch-none flex-col overscroll-contain bg-background"
       data-drawing-editor
       contenteditable="false"
     >
