@@ -231,7 +231,6 @@ export function useNotes() {
     content,
     isLoadingFiles,
     isLoadingContent,
-    isSaving,
     saveError,
     hasUnsyncedChanges,
     refreshFiles,

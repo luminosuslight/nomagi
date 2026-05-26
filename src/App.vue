@@ -31,7 +31,6 @@ const {
   content,
   isLoadingFiles,
   isLoadingContent,
-  isSaving,
   hasUnsyncedChanges,
   checkCloned,
   updateSettings,
@@ -216,7 +215,6 @@ onUnmounted(() => {
         v-model="content"
         :filename="selectedFile"
         :is-loading="isLoadingContent"
-        :is-saving="isSaving"
         :show-back="mobileView === 'editor'"
         @back="mobileView = 'files'"
       />

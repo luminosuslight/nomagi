@@ -9,7 +9,6 @@ defineProps<{
   filename: string | null
   modelValue: string
   isLoading: boolean
-  isSaving: boolean
   showBack?: boolean
 }>()
 
@@ -36,10 +35,6 @@ defineEmits<{
       <h2 class="min-w-0 flex-1 truncate text-sm font-medium">
         {{ filename ?? 'Select a note' }}
       </h2>
-      <span
-        v-if="isSaving"
-        class="shrink-0 text-xs text-muted-foreground"
-      >Saving…</span>
     </div>
     <div
       v-if="isLoading"
