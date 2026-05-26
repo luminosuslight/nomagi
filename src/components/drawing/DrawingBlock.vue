@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, isRef, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
 import { Pencil } from 'lucide-vue-next'
-import DrawingPaths from '@/components/tiptap/DrawingPaths.vue'
+import DrawingPaths from '@/components/drawing/DrawingPaths.vue'
 import Button from '@/components/ui/Button.vue'
 import { ColorPicker } from '@/components/ui/color-picker'
 import Label from '@/components/ui/Label.vue'

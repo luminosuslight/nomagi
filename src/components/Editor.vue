@@ -1,16 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { ArrowLeft } from 'lucide-vue-next'
 import { MilkdownProvider } from '@milkdown/vue'
-import TipTapEditor from '@/components/TipTapEditor.vue'
 import MilkdownEditor from '@/components/MilkdownEditor.vue'
 import Button from '@/components/ui/Button.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
-import { cn } from '@/lib/utils'
-
-type EditorKind = 'tiptap' | 'milkdown'
-
-const editorKind = ref<EditorKind>('milkdown')
 
 defineProps<{
   filename: string | null
@@ -43,26 +36,6 @@ defineEmits<{
       <h2 class="min-w-0 flex-1 truncate text-sm font-medium">
         {{ filename ?? 'Select a note' }}
       </h2>
-      <div class="flex shrink-0 items-center rounded-md border p-0.5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          :class="cn('h-7 px-2 text-xs', editorKind === 'tiptap' && 'bg-muted')"
-          @click="editorKind = 'tiptap'"
-        >
-          TipTap
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          :class="cn('h-7 px-2 text-xs', editorKind === 'milkdown' && 'bg-muted')"
-          @click="editorKind = 'milkdown'"
-        >
-          Milkdown
-        </Button>
-      </div>
       <span
         v-if="isSaving"
         class="shrink-0 text-xs text-muted-foreground"
@@ -79,17 +52,9 @@ defineEmits<{
       v-else
       class="relative min-h-0 flex-1"
     >
-      <TipTapEditor
-        v-if="editorKind === 'tiptap'"
-        :key="`tiptap-${filename ?? 'none'}`"
-        :model-value="modelValue"
-        :disabled="!filename"
-        placeholder="Start writing…"
-        @update:model-value="$emit('update:modelValue', $event)"
-      />
-      <MilkdownProvider v-else>
+      <MilkdownProvider>
         <MilkdownEditor
-          :key="`milkdown-${filename ?? 'none'}`"
+          :key="filename ?? 'none'"
           :model-value="modelValue"
           :disabled="!filename"
           placeholder="Start writing…"
