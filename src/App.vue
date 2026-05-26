@@ -36,6 +36,7 @@ const {
   updateSettings,
   clone,
   syncNotes,
+  leaveCurrentFile,
   refreshFiles,
   createFile,
   readFile,
@@ -53,8 +54,6 @@ const recentPreviewItems = computed(() =>
     subtitle: formatRelativeTime(note.lastModified),
   })),
 )
-
-let syncInterval: ReturnType<typeof setInterval> | null = null
 
 async function handleClone(next: GitSettings) {
   try {
@@ -83,6 +82,11 @@ async function handleSync(manual = false) {
 function selectFile(file: string) {
   selectedFile.value = file
   mobileView.value = 'editor'
+}
+
+function handleEditorBack() {
+  mobileView.value = 'files'
+  void leaveCurrentFile().catch((err) => reportError('sync', err))
 }
 
 async function handleNewFile() {
@@ -117,16 +121,11 @@ onMounted(async () => {
     settingsOpen.value = true
   }
 
-  syncInterval = setInterval(() => {
-    if (navigator.onLine) void handleSync(false)
-  }, 60_000)
-
   window.addEventListener('online', handleOnline)
   window.addEventListener('offline', handleOffline)
 })
 
 onUnmounted(() => {
-  if (syncInterval) clearInterval(syncInterval)
   window.removeEventListener('online', handleOnline)
   window.removeEventListener('offline', handleOffline)
 })
@@ -216,7 +215,7 @@ onUnmounted(() => {
         :filename="selectedFile"
         :is-loading="isLoadingContent"
         :show-back="mobileView === 'editor'"
-        @back="mobileView = 'files'"
+        @back="handleEditorBack"
       />
     </main>
 

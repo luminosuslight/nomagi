@@ -2,6 +2,7 @@ export { drawingRemark } from '@/lib/milkdown/drawing/drawingRemark'
 export { drawingSchema } from '@/lib/milkdown/drawing/drawingSchema'
 export { drawingView } from '@/lib/milkdown/drawing/drawingView'
 export { insertDrawingCommand } from '@/lib/milkdown/drawing/drawingCommand'
+export { sketchSlashMenuConfig } from '@/lib/milkdown/drawing/sketchSlashMenu'
 export { drawingEditingCtx, drawingOverlayRootCtx } from '@/lib/milkdown/drawing/overlayCtx'
 
 import { drawingEditingCtx, drawingOverlayRootCtx } from '@/lib/milkdown/drawing/overlayCtx'

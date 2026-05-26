@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { provide, ref, watch } from 'vue'
-import { Pencil } from 'lucide-vue-next'
+import { markRaw, provide, ref, shallowRef, watch } from 'vue'
 import { Milkdown, useEditor } from '@milkdown/vue'
 import { Crepe } from '@milkdown/crepe'
-import { callCommand, replaceAll } from '@milkdown/kit/utils'
-import Button from '@/components/ui/Button.vue'
+import { replaceAll } from '@milkdown/kit/utils'
 import { editorOverlayRootKey } from '@/lib/editorOverlay'
 import {
   drawingEditingCtx,
@@ -13,6 +11,7 @@ import {
   drawingSchema,
   drawingView,
   insertDrawingCommand,
+  sketchSlashMenuConfig,
 } from '@/lib/milkdown/drawing'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +29,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const crepeRef = ref<Crepe>()
+const crepeRef = shallowRef<Crepe>()
 const overlayRoot = ref<HTMLElement | null>(null)
 const drawingEditing = ref(false)
 let lastUserChange = 0
@@ -45,6 +44,7 @@ const { loading } = useEditor((root) => {
       [Crepe.Feature.Placeholder]: {
         text: props.placeholder ?? 'Start writing…',
       },
+      [Crepe.Feature.BlockEdit]: sketchSlashMenuConfig,
     },
   })
 
@@ -71,13 +71,9 @@ const { loading } = useEditor((root) => {
     crepe.setReadonly(true)
   }
 
-  crepeRef.value = crepe
+  crepeRef.value = markRaw(crepe)
   return crepe
 })
-
-function insertDrawing() {
-  crepeRef.value?.editor.action(callCommand(insertDrawingCommand.key))
-}
 
 watch(
   () => props.modelValue,
@@ -104,20 +100,6 @@ watch(
     ref="overlayRoot"
     class="absolute inset-0 flex min-h-0 flex-col"
   >
-    <div class="flex shrink-0 items-center gap-1 border-b px-4 py-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        class="h-8 gap-1.5 px-2 text-base"
-        :disabled="disabled"
-        title="Insert sketch"
-        @click="insertDrawing"
-      >
-        <Pencil class="size-4" />
-        Sketch
-      </Button>
-    </div>
     <div
       :class="
         cn(

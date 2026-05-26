@@ -17,7 +17,8 @@ const SYNC_SKIP_EDIT_MS = 2_000
  * Amend within COMMIT_AMEND_WINDOW_MS if HEAD is unpushed (useGit).
  * flush() on file switch / tab hide; openFile commits previous file when switching.
  *
- * Sync: syncNotes({ auto }) — auto skips if isEditingActive() (SYNC_SKIP_EDIT_MS).
+ * Sync: on file leave (switch / mobile back) queues background push when there were
+ * local edits or unpushed commits; syncNotes for manual / mount / reconnect.
  * Manual sync always runs. Reload open file only if !isDirty() after sync.
  * Merge conflicts in notes keep both sides (see notesMergeDriver).
  */
@@ -36,6 +37,7 @@ export function useNotes() {
   let skipSave = false
   const lastPersistedContent = ref('')
   let lastEditAt = 0
+  let backgroundSyncChain: Promise<void> = Promise.resolve()
   const hasUnsyncedChanges = computed(() => git.hasUnpushedCommits.value)
 
   function clearSaveTimer() {
@@ -103,15 +105,37 @@ export function useNotes() {
     }
   }
 
+  async function syncAfterLocalChanges(options: { reload?: boolean } = {}) {
+    if (!git.isCloned.value || !navigator.onLine) return
+
+    await git.sync()
+    await refreshFiles()
+    if (options.reload !== false) {
+      await reloadCurrentFileIfClean()
+    }
+  }
+
+  function queueBackgroundSync(options: { reload?: boolean } = {}) {
+    backgroundSyncChain = backgroundSyncChain
+      .then(() => syncAfterLocalChanges(options))
+      .catch((err) => reportError('sync', err))
+  }
+
   async function syncNotes(options: { auto?: boolean } = {}): Promise<{ skipped?: boolean }> {
     if (!git.isCloned.value || !navigator.onLine) return { skipped: true }
     if (options.auto && isEditingActive()) return { skipped: true }
 
     await flush()
-    await git.sync()
-    await refreshFiles()
-    await reloadCurrentFileIfClean()
+    await syncAfterLocalChanges()
     return {}
+  }
+
+  /** Flush the open file and push when the user edited or has unpushed commits. */
+  async function leaveCurrentFile() {
+    const hadUnsavedEdits = isDirty()
+    await flush()
+    if (!hadUnsavedEdits && !git.hasUnpushedCommits.value) return
+    queueBackgroundSync({ reload: false })
   }
 
   async function refreshRecentNotes() {
@@ -157,13 +181,18 @@ export function useNotes() {
   })
 
   async function openFile(filepath: string, prevFilepath: string | null = null) {
-    if (prevFilepath && prevFilepath !== filepath) {
+    const leavingFile = Boolean(prevFilepath && prevFilepath !== filepath)
+    const hadUnsavedEdits =
+      leavingFile && !skipSave && content.value !== lastPersistedContent.value
+
+    if (leavingFile) {
       clearSaveTimer()
-      if (!skipSave && content.value !== lastPersistedContent.value) {
+      if (hadUnsavedEdits) {
         isSaving.value = true
         saveError.value = null
         try {
-          await git.writeFile(prevFilepath, content.value)
+          await git.writeFile(prevFilepath!, content.value)
+          lastPersistedContent.value = content.value
         } catch (err) {
           reportError('save', err)
           saveError.value = errorMessage(err)
@@ -171,6 +200,10 @@ export function useNotes() {
         } finally {
           isSaving.value = false
         }
+      }
+
+      if (hadUnsavedEdits || git.hasUnpushedCommits.value) {
+        queueBackgroundSync({ reload: false })
       }
     }
 
@@ -236,6 +269,7 @@ export function useNotes() {
     refreshFiles,
     selectFile: openFile,
     flush,
+    leaveCurrentFile,
     syncNotes,
     createFile,
   }
