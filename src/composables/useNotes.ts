@@ -17,7 +17,8 @@ const SYNC_SKIP_EDIT_MS = 2_000
  * Amend within COMMIT_AMEND_WINDOW_MS if HEAD is unpushed (useGit).
  * flush() on file switch / tab hide; openFile commits previous file when switching.
  *
- * Sync: on file leave (switch / mobile back) queues background push when there were
+ * Sync: push first; fetch + merge only when push is rejected (non-fast-forward).
+ * On file leave (switch / mobile back) queues background sync when there were
  * local edits or unpushed commits; syncNotes for manual / mount / reconnect.
  * Manual sync always runs. Reload open file only if !isDirty() after sync.
  * Merge conflicts in notes keep both sides (see notesMergeDriver).

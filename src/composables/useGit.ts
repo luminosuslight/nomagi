@@ -1,4 +1,4 @@
-import git from 'isomorphic-git'
+import git, { Errors } from 'isomorphic-git'
 import http from 'isomorphic-git/http/web'
 import LightningFS from '@isomorphic-git/lightning-fs'
 import { reactive, ref } from 'vue'
@@ -74,6 +74,13 @@ function auth(settings: GitSettings) {
 
 function corsProxy(settings: GitSettings) {
   return settings.corsProxy.trim() || undefined
+}
+
+function isPushNotFastForward(err: unknown): boolean {
+  return (
+    err instanceof Errors.PushRejectedError &&
+    err.data.reason === 'not-fast-forward'
+  )
 }
 
 export function normalizeMarkdownFilename(name: string): string {
@@ -276,6 +283,17 @@ export function useGit() {
     await git.checkout({ fs, dir: REPO_DIR, ref: branch })
   }
 
+  async function pushToRemote() {
+    await git.push({
+      fs,
+      http,
+      dir: REPO_DIR,
+      corsProxy: corsProxy(settings),
+      headers: authHeaders(settings),
+      onAuth: auth(settings),
+    })
+  }
+
   async function sync() {
     if (!isCloned.value || !navigator.onLine) return
 
@@ -285,16 +303,13 @@ export function useGit() {
 
     try {
       await withGitLock(async () => {
-        await pullWithNotesMerge()
-
-        await git.push({
-          fs,
-          http,
-          dir: REPO_DIR,
-          corsProxy: corsProxy(settings),
-          headers: authHeaders(settings),
-          onAuth: auth(settings),
-        })
+        try {
+          await pushToRemote()
+        } catch (err) {
+          if (!isPushNotFastForward(err)) throw err
+          await pullWithNotesMerge()
+          await pushToRemote()
+        }
 
         saveLastPushedCommitOid(await resolveHeadOid())
         await refreshCommitState()
