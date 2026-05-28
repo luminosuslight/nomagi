@@ -13,6 +13,7 @@ import {
   insertDrawingCommand,
   sketchSlashMenuConfig,
 } from '@/lib/milkdown/drawing'
+import { jsDrawRemark, jsDrawSchema, jsDrawView } from '@/lib/milkdown/jsDraw'
 import { cn } from '@/lib/utils'
 
 import '@milkdown/crepe/theme/common/style.css'
@@ -59,6 +60,9 @@ const { loading } = useEditor((root) => {
     .use(drawingSchema)
     .use(drawingView)
     .use(insertDrawingCommand)
+    .use(jsDrawRemark)
+    .use(jsDrawSchema)
+    .use(jsDrawView)
 
   crepe.on((listener) => {
     listener.markdownUpdated((_ctx, markdown) => {
@@ -142,7 +146,8 @@ watch(
   margin-top: 0;
 }
 
-.milkdown-editor :deep(figure.sketch) {
+.milkdown-editor :deep(figure.sketch),
+.milkdown-editor :deep(figure.js-draw-sketch) {
   margin: 0;
 }
 </style>

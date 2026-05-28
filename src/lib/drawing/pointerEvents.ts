@@ -34,5 +34,12 @@ export function shouldStopDrawingEvent(event: Event): boolean {
     return DRAWING_POINTER_EVENTS.has(event.type)
   }
 
+  if (
+    target.closest('[data-js-draw-editor]') ||
+    target.closest('.imageEditorContainer')
+  ) {
+    return DRAWING_POINTER_EVENTS.has(event.type)
+  }
+
   return false
 }
