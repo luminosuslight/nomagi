@@ -16,8 +16,6 @@ import SettingsDialog from '@/components/SettingsDialog.vue'
 import SyncButton from '@/components/SyncButton.vue'
 import { Toaster } from '@/components/ui/sonner'
 import { useNotes } from '@/composables/useNotes'
-import type { GitSettings } from '@/composables/useGit'
-
 type MobileView = 'files' | 'editor'
 
 const {
@@ -55,9 +53,8 @@ const recentPreviewItems = computed(() =>
   })),
 )
 
-async function handleClone(next: GitSettings) {
+async function handleClone() {
   try {
-    updateSettings(next)
     await clone()
     await refreshFiles()
     settingsOpen.value = false
