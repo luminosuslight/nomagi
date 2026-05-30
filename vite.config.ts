@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
+import { gitCorsProxy } from './vite.git-cors-proxy'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -40,11 +41,7 @@ export default defineConfig(({ mode }) => {
       port,
       allowedHosts,
       proxy: {
-        '/git-cors/github.com': {
-          target: 'https://github.com',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/git-cors\/github\.com/, ''),
-        },
+        '/git-cors': gitCorsProxy(),
       },
     },
     preview: {
@@ -52,11 +49,7 @@ export default defineConfig(({ mode }) => {
       port,
       allowedHosts,
       proxy: {
-        '/git-cors/github.com': {
-          target: 'https://github.com',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/git-cors\/github\.com/, ''),
-        },
+        '/git-cors': gitCorsProxy(),
       },
     },
   }
