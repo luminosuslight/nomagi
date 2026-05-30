@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'Git Notes',
-          short_name: 'Notes',
+          name: 'Nomagi',
+          short_name: 'Nomagi',
           theme_color: '#000000',
           background_color: '#ffffff',
           display: 'standalone',

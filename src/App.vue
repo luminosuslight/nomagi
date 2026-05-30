@@ -151,7 +151,7 @@ onUnmounted(() => {
     >
       <div class="flex items-center justify-between gap-2 px-4 py-3">
         <h1 class="text-base font-semibold">
-          Git Notes
+          Nomagi
         </h1>
         <div class="flex items-center gap-1">
           <SyncButton

@@ -1,4 +1,4 @@
-# Quillet — modern notes app using markdown and git
+# Nomagi — modern notes app using markdown and git
 
 Technically a pure frontend to **plain Markdown files in your own Git repo** — but acts like a **modern notes app** with mobile and offline support plus advanced features like **handwritten sketches**.
 
@@ -26,7 +26,7 @@ Not for users who need real-time collaboration or project management features (l
 
 ## How it compares
 
-| | Quillet | Notion / cloud apps | Obsidian / Logseq | Joplin | Markdown + Git by hand |
+| | Nomagi | Notion / cloud apps | Obsidian / Logseq | Joplin | Markdown + Git by hand |
 |---|---|---|---|---|---|
 | Storage format | Plain Markdown | Proprietary cloud DB | Plain Markdown | Markdown-*like* internal format | Plain Markdown |
 | Self-host / server needed | None (client-only) | Hosted by vendor | None (local files) | Optional sync server | None |
@@ -61,7 +61,7 @@ Put the container behind your own TLS terminator / reverse proxy (nginx, Caddy, 
 
 If there was no need for a CORS proxy, we could just host the static files for everyone and nobody would see the data except for the git provider.
 
-But we had two goals with Quillet:
+But we had two goals with Nomagi:
 1. **Using an existing git repo** to store the data: a) to make the notes available to other tools, and b) to remove the need for a custom storage and syncing backend.
 2. **And not having to maintain client apps.**
 
@@ -81,7 +81,7 @@ Self-host the app files and CORS proxy on the same origin to fully protect your 
 - **End-to-end encryption**: Providers like GitHub do not support transparent end-to-end encryption of the data. They only support encrypting the transport layer for direct connections (Git smart HTTP, git over SSH, custom REST API). Additionally, E2E encryption requires secure transfer of the key to all used devices, which is difficult in practice (storing it in a backend would eliminate the purpose).
 - **git over SSH**: Browser don't allow TCP connection on arbitrary ports like port 22.
 - **Provider specific REST API**: GitHub and others offer a REST API that might allow to create commits. But this would limit the app to specific providers and might not support all features of git like conflict resolution.
-- **Self-host a custom backend like other open source note apps**: Custom backends can become outdated and a security risk easily. Quillet only requires an agnostic CORS proxy + static file hosting + usually existing git hoster.
+- **Self-host a custom backend like other open source note apps**: Custom backends can become outdated and a security risk easily. Nomagi only requires an agnostic CORS proxy + static file hosting + usually existing git hoster.
 - **Public cloud backend like Notion**: When using tools like Notion, the data is typically encrypted during transit and also at rest, but to simplify the usage, the providers hold the encryption keys. So they can decrypt the data at any time, and the data is usually also unencrypted between the termination of the HTTPS transfer and the encryption on disk (same as with the CORS proxy between receiving the request and forwarding it to e.g. GitHub).
 - **Using local files like Obsidian**: Leaves the complex part of syncing the files to the user. Solutions like NextCloud can be more brittle with conflicting updates than git.
 
@@ -99,3 +99,7 @@ Vite serves the app with hot reload (default http://localhost:5173). The dev ser
 ## Tech stack
 
 Vue 3 + TypeScript + Vite, [isomorphic-git](https://isomorphic-git.org/) with LightningFS for in-browser Git, [Milkdown](https://milkdown.dev/) for editing, and `vite-plugin-pwa` for offline/installable support.
+
+## Naming
+
+**Nomagi** combines **no** (notes), **ma** (markdown), and **gi** (git). It also hints at “no magic”: plain Markdown and Git, with no custom format or backend.
