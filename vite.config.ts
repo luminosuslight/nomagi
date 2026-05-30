@@ -19,13 +19,25 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'Nomagi',
           short_name: 'Nomagi',
-          theme_color: '#000000',
+          theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',
           start_url: '/',
+          icons: [
+            {
+              src: '/favicons/android-chrome-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+            },
+            {
+              src: '/favicons/android-chrome-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+            },
+          ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,woff2,svg}'],
+          globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico}'],
           // Main bundle (~2.2 MB) includes Milkdown, Vue, etc.; default limit is 2 MB.
           maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         },
