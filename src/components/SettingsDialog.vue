@@ -133,7 +133,7 @@ function onSubmit() {
         />
         <p class="text-sm text-muted-foreground">
           Use a fine-grained token with permission
-          “Read & Write access to code”, limited to your notes repo.
+          “Contents: Read & Write”, limited to your notes repo.
           <a
             href="https://github.com/settings/personal-access-tokens"
             target="_blank"
