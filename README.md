@@ -100,6 +100,20 @@ npm run dev
 
 Vite serves the app with hot reload (default http://localhost:5173). The dev server includes the same `/git-cors/` proxy as production.
 
+## Auto-save & sync
+
+The app automatically saves changes by creating commits (it amends to the last commit within a reasonable time), and sync the notes to the git remote using pull & push. It resolves conflicts by always taking both changes.
+
+| When | Commit (local) | Sync (remote) |
+| --- | --- | --- |
+| Editing stops (~500 ms) | Yes | — |
+| Switch note / mobile back | Yes (pending edits) | If edited or unpushed |
+| Tab hidden | Yes (pending edits) | — |
+| App open / back online | — | Yes (skipped within 2 s of last edit) |
+| Sync button | Flushes pending edits | Always (when online) |
+
+Rapid edits within 60 s amend the same local commit until it is pushed. Sync pushes first; pull + merge only if the remote moved.
+
 ## Tech stack
 
 Vue 3 + TypeScript + Vite, [isomorphic-git](https://isomorphic-git.org/) with LightningFS for in-browser Git, [Milkdown](https://milkdown.dev/) for editing, and `vite-plugin-pwa` for offline/installable support.
