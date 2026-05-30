@@ -52,6 +52,51 @@ function saveSettings(settings: GitSettings) {
   localStorage.setItem('authorEmail', settings.author.email)
 }
 
+function defaultSettings(): GitSettings {
+  return {
+    repoUrl: '',
+    token: '',
+    corsProxy: '/git-cors',
+    author: { name: '', email: '' },
+  }
+}
+
+function clearStoredSettings() {
+  const pushedPrefix = `${LAST_PUSHED_OID_KEY}:`
+  const keys: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (!key) continue
+    if (
+      key === 'repoUrl' ||
+      key === 'token' ||
+      key === 'corsProxy' ||
+      key === 'authorName' ||
+      key === 'authorEmail' ||
+      key.startsWith(pushedPrefix)
+    ) {
+      keys.push(key)
+    }
+  }
+  for (const key of keys) localStorage.removeItem(key)
+}
+
+async function rmRecursive(path: string): Promise<void> {
+  let stat
+  try {
+    stat = await pfs.stat(path)
+  } catch {
+    return
+  }
+  if (stat.isDirectory()) {
+    const entries = await pfs.readdir(path)
+    await Promise.all(entries.map((name) => rmRecursive(`${path}/${name}`)))
+    await pfs.rmdir(path)
+  } else {
+    await pfs.unlink(path)
+  }
+}
+
 function basicAuthHeader(token: string) {
   return `Basic ${btoa(`x-access-token:${token}`)}`
 }
@@ -212,6 +257,26 @@ export function useGit() {
   function updateSettings(next: Partial<GitSettings>) {
     Object.assign(settings, next)
     saveSettings(settings)
+  }
+
+  async function resetApp() {
+    isBusy.value = true
+    lastError.value = null
+
+    try {
+      await withGitLock(async () => {
+        await rmRecursive(REPO_DIR)
+        clearStoredSettings()
+        Object.assign(settings, defaultSettings())
+        lastLocalCommitAt = null
+        lastPushedCommitOid = null
+        isCloned.value = false
+        syncStatus.value = 'idle'
+        hasUnpushedCommits.value = false
+      })
+    } finally {
+      isBusy.value = false
+    }
   }
 
   async function clone() {
@@ -414,6 +479,7 @@ export function useGit() {
     hasUnpushedCommits,
     checkCloned,
     updateSettings,
+    resetApp,
     clone,
     sync,
     commitFile,

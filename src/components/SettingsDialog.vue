@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import Dialog from '@/components/ui/Dialog.vue'
+import ConfirmAlertDialog from '@/components/ui/ConfirmAlertDialog.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
@@ -18,7 +19,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   save: [settings: GitSettings]
   clone: []
+  reset: []
 }>()
+
+const resetConfirmOpen = ref(false)
 
 const draft = reactive({
   repoUrl: '',
@@ -108,9 +112,15 @@ function onSubmit() {
           id="repo-url"
           v-model="draft.repoUrl"
           placeholder="https://github.com/user/notes.git"
+          :disabled="isCloned"
         />
         <p class="text-sm text-muted-foreground">
-          Use a dedicated notes repo — commits are automatic and frequent.
+          <template v-if="isCloned">
+            To use a different repository, reset the app below.
+          </template>
+          <template v-else>
+            Use a dedicated notes repo — commits are automatic and frequent.
+          </template>
         </p>
       </div>
       <div class="space-y-2">
@@ -119,10 +129,10 @@ function onSubmit() {
           id="token"
           v-model="draft.token"
           type="password"
-          placeholder="ghp_..."
+          placeholder="github_pat_..."
         />
         <p class="text-sm text-muted-foreground">
-          When using GitHub: Use a fine-grained token with permission
+          Use a fine-grained token with permission
           “Read & Write access to code”, limited to your notes repo.
           <a
             href="https://github.com/settings/personal-access-tokens"
@@ -155,13 +165,32 @@ function onSubmit() {
         <p class="text-sm font-medium">
           Thats all, lets go!
         </p>
-        <Button
-          type="submit"
-          :disabled="isBusy"
-        >
-          {{ isCloned ? 'Save' : 'Clone Repository' }}
-        </Button>
+        <div class="flex flex-wrap gap-2">
+          <Button
+            v-if="isCloned"
+            type="button"
+            variant="outline"
+            class="border-destructive bg-background text-destructive hover:bg-destructive/10"
+            :disabled="isBusy"
+            @click="resetConfirmOpen = true"
+          >
+            Reset app
+          </Button>
+          <Button
+            type="submit"
+            :disabled="isBusy"
+          >
+            {{ isCloned ? 'Save' : 'Clone Repository' }}
+          </Button>
+        </div>
       </div>
     </form>
+    <ConfirmAlertDialog
+      v-model="resetConfirmOpen"
+      title="Reset app?"
+      description="This deletes all notes stored in this browser and clears your settings. Unsynced changes will be lost. Your remote repository is not deleted."
+      confirm-label="Reset everything"
+      @confirm="emit('reset')"
+    />
   </Dialog>
 </template>

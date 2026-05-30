@@ -32,6 +32,7 @@ const {
   hasUnsyncedChanges,
   checkCloned,
   updateSettings,
+  resetApp,
   clone,
   syncNotes,
   leaveCurrentFile,
@@ -61,6 +62,16 @@ async function handleClone() {
     toast.success('Repository cloned')
   } catch (err) {
     reportError('clone', err)
+    toast.error(errorMessage(err))
+  }
+}
+
+async function handleReset() {
+  try {
+    await resetApp()
+    window.location.reload()
+  } catch (err) {
+    reportError('reset', err)
     toast.error(errorMessage(err))
   }
 }
@@ -223,6 +234,7 @@ onUnmounted(() => {
       :is-busy="isBusy"
       @save="updateSettings"
       @clone="handleClone"
+      @reset="handleReset"
     />
   </div>
 
