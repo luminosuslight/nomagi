@@ -8,6 +8,10 @@ Client-only, no need to host anything (beside an optional small CORS proxy for m
 
 Works with any git hoster that supports personal access tokens (GitHub, GitLab, gitea).
 
+| Setup | Recent | Example note |
+| --- | --- | --- |
+| ![Connect a Git repository](docs/images/setup_screen.png) | ![Recent notes sidebar](docs/images/recent_screen.png) | ![Note with handwritten sketch blocks](docs/images/example_note.png) |
+
 ## Who it's for
 
 People who value Markdown and Git as a **safe, durable home for valuable personal or work notes** but don't want to miss out on features that a code editor can't provide - like taking handwritten notes on a tablet.
