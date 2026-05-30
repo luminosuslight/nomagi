@@ -1,4 +1,6 @@
 <script setup lang="ts">
+/* Parent passes a Ref via drawingEditing; updating .value is intentional. */
+/* eslint-disable vue/no-mutating-props */
 import Editor from 'js-draw'
 import 'js-draw/bundledStyles'
 

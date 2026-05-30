@@ -69,7 +69,5 @@ export async function searchNotes(
 
   return results
     .filter((result): result is SearchResult => result !== null)
-    .sort(
-      (a, b) => b.matchCount - a.matchCount || a.filepath.localeCompare(b.filepath),
-    )
+    .sort((a, b) => b.matchCount - a.matchCount || a.filepath.localeCompare(b.filepath))
 }

@@ -53,8 +53,7 @@ const emit = defineEmits<{
             :class="
               cn(
                 'border-border/50 bg-muted/40 shadow-none transition-colors hover:border-border hover:bg-muted/60',
-                selectedFile === item.filepath &&
-                  'border-border bg-accent/50 ring-1 ring-ring/25',
+                selectedFile === item.filepath && 'border-border bg-accent/50 ring-1 ring-ring/25',
               )
             "
           >

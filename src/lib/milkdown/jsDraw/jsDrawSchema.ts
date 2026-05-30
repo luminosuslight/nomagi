@@ -57,11 +57,7 @@ export const jsDrawSchema = $nodeSchema('jsDraw', () => ({
   toMarkdown: {
     match: (node) => node.type.name === 'jsDraw',
     runner: (state, node) => {
-      state.addNode(
-        'html',
-        undefined,
-        figureHtmlFromSvgMarkup(node.attrs.svgMarkup as string),
-      )
+      state.addNode('html', undefined, figureHtmlFromSvgMarkup(node.attrs.svgMarkup as string))
     },
   },
 }))

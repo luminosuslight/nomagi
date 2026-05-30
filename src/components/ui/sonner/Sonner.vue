@@ -1,22 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ToasterProps } from 'vue-sonner'
-import {
-  CircleCheck,
-  Info,
-  Loader2,
-  OctagonX,
-  TriangleAlert,
-  X,
-} from 'lucide-vue-next'
+import { CircleCheck, Info, Loader2, OctagonX, TriangleAlert, X } from 'lucide-vue-next'
 import { Toaster as Sonner } from 'vue-sonner'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<ToasterProps>()
 
 const toasterProps = computed(() => {
-  const { toastOptions: _toastOptions, class: _class, ...rest } = props
-  return rest
+  const rest = { ...props } as Record<string, unknown>
+  delete rest.toastOptions
+  delete rest.class
+  return rest as typeof props
 })
 
 const toastOptions = computed(() => ({
@@ -24,10 +19,8 @@ const toastOptions = computed(() => ({
     toast:
       'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
     description: 'group-[.toast]:text-muted-foreground',
-    actionButton:
-      'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
-    cancelButton:
-      'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
+    actionButton: 'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
+    cancelButton: 'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
     ...props.toastOptions?.classes,
   },
   ...props.toastOptions,

@@ -123,10 +123,7 @@ function corsProxy(settings: GitSettings) {
 }
 
 function isPushNotFastForward(err: unknown): boolean {
-  return (
-    err instanceof Errors.PushRejectedError &&
-    err.data.reason === 'not-fast-forward'
-  )
+  return err instanceof Errors.PushRejectedError && err.data.reason === 'not-fast-forward'
 }
 
 export function normalizeMarkdownFilename(name: string): string {
@@ -228,8 +225,7 @@ async function refreshCommitState() {
     hasUnpushedCommits.value = head !== lastPushedCommitOid
 
     const commits = await git.log({ fs, dir: REPO_DIR, depth: 1 })
-    lastLocalCommitAt =
-      commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : null
+    lastLocalCommitAt = commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : null
   } catch {
     lastLocalCommitAt = null
     hasUnpushedCommits.value = false
@@ -435,8 +431,7 @@ export function useGit() {
       names.map(async (filepath) => {
         try {
           const commits = await git.log({ fs, dir: REPO_DIR, filepath, depth: 1 })
-          const lastModified =
-            commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : 0
+          const lastModified = commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : 0
           return { filepath, lastModified }
         } catch {
           return { filepath, lastModified: 0 }

@@ -63,7 +63,9 @@ withDefaults(
               class="size-full rounded-md ring-1 ring-inset ring-black/15"
               :style="{ backgroundColor: swatch }"
             />
-            <ColorSwatchPickerItemIndicator class="absolute inset-0 flex items-center justify-center">
+            <ColorSwatchPickerItemIndicator
+              class="absolute inset-0 flex items-center justify-center"
+            >
               <Check class="size-4 text-white drop-shadow-sm" />
             </ColorSwatchPickerItemIndicator>
           </ColorSwatchPickerItem>

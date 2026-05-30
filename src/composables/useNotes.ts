@@ -183,8 +183,7 @@ export function useNotes() {
 
   async function openFile(filepath: string, prevFilepath: string | null = null) {
     const leavingFile = Boolean(prevFilepath && prevFilepath !== filepath)
-    const hadUnsavedEdits =
-      leavingFile && !skipSave && content.value !== lastPersistedContent.value
+    const hadUnsavedEdits = leavingFile && !skipSave && content.value !== lastPersistedContent.value
 
     if (leavingFile) {
       clearSaveTimer()

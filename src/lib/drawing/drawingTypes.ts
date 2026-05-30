@@ -64,9 +64,8 @@ export function linesFromSvg(svg: Element | null): DrawingLine[] {
     return {
       id: path.id.replace(/^id-/, '') || crypto.randomUUID(),
       color:
-        (mode === 'advanced'
-          ? path.getAttribute('fill')
-          : path.getAttribute('stroke')) ?? '#000000',
+        (mode === 'advanced' ? path.getAttribute('fill') : path.getAttribute('stroke')) ??
+        '#000000',
       size,
       path: path.getAttribute('d') ?? '',
       mode,

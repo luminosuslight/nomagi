@@ -1,8 +1,4 @@
-import {
-  linesFromSvg,
-  svgMarkupFromLines,
-  type DrawingLine,
-} from '@/lib/drawing/drawingTypes'
+import { linesFromSvg, svgMarkupFromLines, type DrawingLine } from '@/lib/drawing/drawingTypes'
 
 export function isDrawingFigureHtml(html: string): boolean {
   return html.includes('data-type="drawing"')

@@ -58,11 +58,7 @@ export const drawingSchema = $nodeSchema('drawing', () => ({
   toMarkdown: {
     match: (node) => node.type.name === 'drawing',
     runner: (state, node) => {
-      state.addNode(
-        'html',
-        undefined,
-        figureHtmlFromLines(node.attrs.lines as DrawingLine[]),
-      )
+      state.addNode('html', undefined, figureHtmlFromLines(node.attrs.lines as DrawingLine[]))
     },
   },
 }))

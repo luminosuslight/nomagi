@@ -3,16 +3,9 @@ import type { Node } from '@milkdown/transformer'
 import { $remark } from '@milkdown/kit/utils'
 import { visit } from 'unist-util-visit'
 
-import {
-  isJsDrawFigureHtml,
-  svgMarkupFromFigureHtml,
-} from '@/lib/drawing/jsDrawFigureMarkdown'
+import { isJsDrawFigureHtml, svgMarkupFromFigureHtml } from '@/lib/drawing/jsDrawFigureMarkdown'
 
-function replaceWithJsDrawNode(
-  parent: Node & { children: Node[] },
-  index: number,
-  html: string,
-) {
+function replaceWithJsDrawNode(parent: Node & { children: Node[] }, index: number, html: string) {
   parent.children.splice(index, 1, {
     type: 'jsDraw',
     svgMarkup: svgMarkupFromFigureHtml(html),
@@ -26,7 +19,7 @@ function transformJsDrawHtml(ast: Node) {
     (
       node: Node & { children?: Node[] },
       index,
-      parent: Node & { children: Node[] } | undefined,
+      parent: (Node & { children: Node[] }) | undefined,
     ) => {
       if (!parent || typeof index !== 'number' || !node.children) return
       if (node.children.length !== 1) return
@@ -44,11 +37,7 @@ function transformJsDrawHtml(ast: Node) {
   visit(
     ast,
     'html',
-    (
-      node: Node & { value?: string },
-      index,
-      parent: Node & { children: Node[] } | undefined,
-    ) => {
+    (node: Node & { value?: string }, index, parent: (Node & { children: Node[] }) | undefined) => {
       if (!parent || typeof index !== 'number') return
 
       const value = node.value ?? ''

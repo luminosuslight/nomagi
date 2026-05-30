@@ -132,8 +132,8 @@ function onSubmit() {
           placeholder="github_pat_..."
         />
         <p class="text-sm text-muted-foreground">
-          Use a fine-grained token with permission
-          “Contents: Read & Write”, limited to your notes repo.
+          Use a fine-grained token with permission “Contents: Read & Write”, limited to your notes
+          repo.
           <a
             href="https://github.com/settings/personal-access-tokens"
             target="_blank"
@@ -150,8 +150,8 @@ function onSubmit() {
           placeholder="/git-cors"
         />
         <p class="text-sm text-muted-foreground">
-          Git hosts don’t allow cross-origin API access from web apps, so a proxy is required.
-          The proxy will see your data. Use this default one or
+          Git hosts don’t allow cross-origin API access from web apps, so a proxy is required. The
+          proxy will see your data. Use this default one or
           <a
             href="https://github.com/isomorphic-git/cors-proxy"
             target="_blank"

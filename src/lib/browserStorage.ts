@@ -17,7 +17,9 @@ export function storageQuotaExceededMessage(): string {
 }
 
 export function hasStoragePersistenceApi(): boolean {
-  return typeof navigator !== 'undefined' && 'storage' in navigator && 'persist' in navigator.storage
+  return (
+    typeof navigator !== 'undefined' && 'storage' in navigator && 'persist' in navigator.storage
+  )
 }
 
 export async function requestPersistentStorage(): Promise<boolean> {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+/* Parent passes a Ref via drawingEditing; updating .value is intentional. */
+/* eslint-disable vue/no-mutating-props */
 import { computed, isRef, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
 import { Pencil } from 'lucide-vue-next'
 import DrawingPaths from '@/components/drawing/DrawingPaths.vue'
@@ -38,17 +40,8 @@ function setLines(nextLines: DrawingLine[]) {
   props.onUpdateLines(nextLines)
 }
 
-const {
-  color,
-  size,
-  mode,
-  strokeId,
-  bindCanvas,
-  onStartDrawing,
-  onMove,
-  onEndDrawing,
-  clear,
-} = useDrawingCanvas(editCanvas, getLines, setLines)
+const { color, size, mode, strokeId, bindCanvas, onStartDrawing, onMove, onEndDrawing, clear } =
+  useDrawingCanvas(editCanvas, getLines, setLines)
 
 const sizeModel = computed({
   get: () => [size.value],

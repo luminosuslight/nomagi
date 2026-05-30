@@ -6,7 +6,4 @@ export const drawingOverlayRootCtx = $ctx(
   'drawingOverlayRoot',
 )
 
-export const drawingEditingCtx = $ctx(
-  null as Ref<boolean> | null,
-  'drawingEditing',
-)
+export const drawingEditingCtx = $ctx(null as Ref<boolean> | null, 'drawingEditing')

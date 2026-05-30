@@ -68,7 +68,9 @@ export function advancedPathFromSamples(
 ): string {
   if (samples.length === 0) return ''
 
-  const input = samples.map((sample) => [sample.x, sample.y, sample.pressure] as [number, number, number])
+  const input = samples.map(
+    (sample) => [sample.x, sample.y, sample.pressure] as [number, number, number],
+  )
   const outline = getStroke(input, {
     ...ADVANCED_STROKE_OPTIONS,
     size,
