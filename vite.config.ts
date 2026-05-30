@@ -15,7 +15,8 @@ export default defineConfig(({ mode }) => {
       vue(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
+        injectRegister: false,
         manifest: {
           name: 'Nomagi',
           short_name: 'Nomagi',

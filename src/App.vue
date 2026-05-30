@@ -22,6 +22,9 @@ import SettingsDialog from '@/components/SettingsDialog.vue'
 import SyncButton from '@/components/SyncButton.vue'
 import { Toaster } from '@/components/ui/sonner'
 import { useNotes } from '@/composables/useNotes'
+import { usePwaUpdate } from '@/composables/usePwaUpdate'
+
+usePwaUpdate()
 type MobileView = 'files' | 'editor'
 
 const {
