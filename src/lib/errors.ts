@@ -1,4 +1,7 @@
+import { isQuotaExceededError, storageQuotaExceededMessage } from '@/lib/browserStorage'
+
 export function errorMessage(err: unknown): string {
+  if (isQuotaExceededError(err)) return storageQuotaExceededMessage()
   return err instanceof Error ? err.message : String(err)
 }
 

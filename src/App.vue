@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
+import {
+  hasStoragePersistenceApi,
+  shouldShowPersistDeniedToast,
+  shouldShowQuotaWarningToast,
+  type StorageSetupResult,
+} from '@/lib/browserStorage'
 import { errorMessage, reportError } from '@/lib/errors'
 import { formatRelativeTime } from '@/lib/formatRelativeTime'
 import { Plus, Settings } from 'lucide-vue-next'
@@ -31,6 +37,7 @@ const {
   isLoadingContent,
   hasUnsyncedChanges,
   checkCloned,
+  setupBrowserStorage,
   updateSettings,
   resetApp,
   clone,
@@ -58,6 +65,7 @@ async function handleClone() {
   try {
     await clone()
     await refreshFiles()
+    notifyStorageSetup(await setupBrowserStorage())
     settingsOpen.value = false
     toast.success('Repository cloned')
   } catch (err) {
@@ -120,10 +128,28 @@ function handleOffline() {
   isOnline.value = false
 }
 
+function notifyStorageSetup(setup: StorageSetupResult) {
+  if (
+    isCloned.value &&
+    hasStoragePersistenceApi() &&
+    !setup.persistGranted &&
+    shouldShowPersistDeniedToast()
+  ) {
+    toast.warning(
+      'Browser may clear offline notes when storage is low. Allow persistent storage if prompted.',
+      { duration: 8000 },
+    )
+  }
+  if (setup.quotaWarning && shouldShowQuotaWarningToast()) {
+    toast.warning(setup.quotaWarning, { duration: 10_000 })
+  }
+}
+
 onMounted(async () => {
   await checkCloned()
   if (isCloned.value) {
     await refreshFiles()
+    notifyStorageSetup(await setupBrowserStorage())
     if (navigator.onLine) void handleSync(false)
   } else {
     settingsOpen.value = true

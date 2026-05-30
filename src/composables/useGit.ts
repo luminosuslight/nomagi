@@ -2,6 +2,7 @@ import git, { Errors } from 'isomorphic-git'
 import http from 'isomorphic-git/http/web'
 import LightningFS from '@isomorphic-git/lightning-fs'
 import { reactive, ref } from 'vue'
+import { ensureBrowserStorage, withStorageErrors } from '@/lib/browserStorage'
 import { errorMessage, reportError } from '@/lib/errors'
 import { notesMergeDriver } from '@/lib/notesMergeDriver'
 
@@ -248,6 +249,10 @@ async function shouldAmendCommit(): Promise<boolean> {
 }
 
 export function useGit() {
+  async function setupBrowserStorage() {
+    return ensureBrowserStorage()
+  }
+
   async function checkCloned() {
     isCloned.value = await repoExists()
     if (isCloned.value) await refreshCommitState()
@@ -265,7 +270,9 @@ export function useGit() {
 
     try {
       await withGitLock(async () => {
-        await rmRecursive(REPO_DIR)
+        await withStorageErrors(async () => {
+          await rmRecursive(REPO_DIR)
+        })
         clearStoredSettings()
         Object.assign(settings, defaultSettings())
         lastLocalCommitAt = null
@@ -292,16 +299,18 @@ export function useGit() {
 
     try {
       await withGitLock(async () => {
-        await git.clone({
-          fs,
-          http,
-          dir: REPO_DIR,
-          url: settings.repoUrl.trim(),
-          corsProxy: corsProxy(settings),
-          headers: authHeaders(settings),
-          onAuth: auth(settings),
-          singleBranch: true,
-          depth: 1,
+        await withStorageErrors(async () => {
+          await git.clone({
+            fs,
+            http,
+            dir: REPO_DIR,
+            url: settings.repoUrl.trim(),
+            corsProxy: corsProxy(settings),
+            headers: authHeaders(settings),
+            onAuth: auth(settings),
+            singleBranch: true,
+            depth: 1,
+          })
         })
         isCloned.value = true
         const head = await resolveHeadOid()
@@ -445,7 +454,9 @@ export function useGit() {
   /** Write file to disk, then commit (amending if within the coalesce window and unpushed). */
   async function writeFile(filepath: string, content: string) {
     await withGitLock(async () => {
-      await pfs.writeFile(`${REPO_DIR}/${filepath}`, content, 'utf8')
+      await withStorageErrors(async () => {
+        await pfs.writeFile(`${REPO_DIR}/${filepath}`, content, 'utf8')
+      })
       await commitFile(filepath)
     })
   }
@@ -478,6 +489,7 @@ export function useGit() {
     isBusy,
     hasUnpushedCommits,
     checkCloned,
+    setupBrowserStorage,
     updateSettings,
     resetApp,
     clone,
