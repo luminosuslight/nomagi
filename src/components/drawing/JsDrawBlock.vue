@@ -8,6 +8,7 @@ import 'js-draw/bundledStyles'
 import { computed, isRef, nextTick, onUnmounted, ref, watch, type Ref } from 'vue'
 import { Pencil } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
+import { configureJsDrawPens, jsDrawPenSettings } from '@/lib/drawing/configureJsDrawPens'
 import { installCoalescedJsDrawPointerInput } from '@/lib/drawing/installCoalescedJsDrawPointerInput'
 
 const props = defineProps<{
@@ -72,8 +73,10 @@ async function mountEditor() {
   editor = new Editor(host, {
     wheelEventsEnabled: 'only-if-focused',
     iconProvider: new MaterialIconProvider(),
+    pens: jsDrawPenSettings,
   })
   installCoalescedJsDrawPointerInput(editor)
+  configureJsDrawPens(editor)
 
   const toolbar = editor.addToolbar(false)
   toolbar.addDefaultActionButtons()
