@@ -41,8 +41,18 @@ function setLines(nextLines: DrawingLine[]) {
   props.onUpdateLines(nextLines)
 }
 
-const { color, size, mode, strokeId, bindCanvas, onStartDrawing, onMove, onEndDrawing, clear } =
-  useDrawingCanvas(editCanvas, getLines, setLines)
+const {
+  color,
+  size,
+  mode,
+  strokeId,
+  drawing,
+  bindCanvas,
+  onStartDrawing,
+  onMove,
+  onEndDrawing,
+  clear,
+} = useDrawingCanvas(editCanvas, getLines, setLines)
 
 const sizeModel = computed({
   get: () => [size.value],
@@ -73,8 +83,8 @@ watch(editing, async (isEditing) => {
 
   if (isEditing) {
     await nextTick()
+    bindCanvas()
     drawingOverlay.value?.focus({ preventScroll: true })
-    requestAnimationFrame(() => bindCanvas())
     window.addEventListener('keydown', onKeydown)
     return
   }
@@ -130,12 +140,14 @@ onUnmounted(() => {
     <div
       ref="drawingOverlay"
       tabindex="-1"
-      class="absolute inset-0 z-50 flex min-h-0 touch-none flex-col overscroll-contain bg-background outline-none"
+      class="absolute inset-0 z-50 flex min-h-0 touch-none select-none flex-col overscroll-contain bg-background outline-none"
       data-drawing-editor
       contenteditable="false"
+      @selectstart.prevent
     >
       <div
-        class="flex shrink-0 flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:gap-3"
+        class="flex shrink-0 touch-none select-none flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:gap-3"
+        :class="drawing && 'pointer-events-none'"
         data-drawing-controls
         contenteditable="false"
       >
@@ -197,11 +209,11 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="min-h-0 flex-1">
+      <div class="min-h-0 flex-1 touch-none">
         <svg
           ref="editCanvas"
           viewBox="0 0 500 250"
-          class="block h-full w-full touch-none cursor-crosshair bg-background"
+          class="block h-full w-full touch-none select-none cursor-crosshair bg-background"
           data-drawing-canvas
           contenteditable="false"
           @pointerdown="onStartDrawing"
@@ -221,6 +233,13 @@ onUnmounted(() => {
 </template>
 
 <style>
+[data-drawing-editor],
+[data-drawing-editor] * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 /* Crepe reset.css zeros button styles inside .milkdown; restore shadcn outline button look. */
 .milkdown .milkdown-drawing-block button {
   display: inline-flex;

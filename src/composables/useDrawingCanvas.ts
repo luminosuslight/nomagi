@@ -98,10 +98,13 @@ export function useDrawingCanvas(
   }
 
   function onStartDrawing(event: PointerEvent) {
-    if (!svg.value || !canvas.value || event.button !== 0) return
+    if (!canvas.value || event.button !== 0) return
 
     event.preventDefault()
     event.stopPropagation()
+
+    if (!svg.value) bindCanvas()
+    if (!svg.value) return
 
     activePointerId.value = event.pointerId
     canvas.value.setPointerCapture(event.pointerId)
@@ -172,6 +175,7 @@ export function useDrawingCanvas(
     size,
     mode,
     strokeId,
+    drawing,
     bindCanvas,
     onStartDrawing,
     onMove,
