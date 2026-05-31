@@ -24,22 +24,6 @@ function countOccurrences(haystack: string, needle: string): number {
   return count
 }
 
-function snippetAroundMatch(content: string, query: string, radius = 30): string {
-  const lowerContent = content.toLowerCase()
-  const lowerQuery = query.toLowerCase()
-  const idx = lowerContent.indexOf(lowerQuery)
-  if (idx === -1) return previewFromContent(content)
-
-  const start = Math.max(0, idx - radius)
-  const end = Math.min(content.length, idx + query.length + radius)
-  let snippet = content.slice(start, end).replace(/\r\n/g, '\n').replace(/\n/g, '|')
-
-  if (start > 0) snippet = `…${snippet}`
-  if (end < content.length) snippet = `${snippet}…`
-
-  return snippet.trim()
-}
-
 export async function searchNotes(
   files: string[],
   readFile: (path: string) => Promise<string>,
@@ -58,12 +42,7 @@ export async function searchNotes(
 
       if (matchCount === 0) return null
 
-      const preview =
-        contentMatches > 0
-          ? snippetAroundMatch(content, normalizedQuery)
-          : previewFromContent(content)
-
-      return { filepath, matchCount, preview }
+      return { filepath, matchCount, preview: previewFromContent(content) }
     }),
   )
 

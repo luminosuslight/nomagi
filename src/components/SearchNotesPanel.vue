@@ -43,7 +43,7 @@ watch(
       results.value = matches.map((match) => ({
         filepath: match.filepath,
         preview: match.preview,
-        subtitle: `${match.matchCount} match${match.matchCount === 1 ? '' : 'es'}`,
+        headerRight: `${match.matchCount} match${match.matchCount === 1 ? '' : 'es'}`,
       }))
     } finally {
       isSearching.value = false

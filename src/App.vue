@@ -60,7 +60,7 @@ const recentPreviewItems = computed(() =>
   recentNotes.value.map((note) => ({
     filepath: note.filepath,
     preview: note.preview,
-    subtitle: formatRelativeTime(note.lastModified),
+    headerRight: formatRelativeTime(note.lastModified),
   })),
 )
 

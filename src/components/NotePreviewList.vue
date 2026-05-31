@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
-import { displayFilename } from '@/lib/noteDisplay'
+import { listDisplayName } from '@/lib/noteDisplay'
 import Card from '@/components/ui/card/Card.vue'
-import CardContent from '@/components/ui/card/CardContent.vue'
 import ScrollArea from '@/components/ui/ScrollArea.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 
 export type NotePreviewItem = {
   filepath: string
   preview: string
-  subtitle?: string | null
+  headerRight?: string | null
 }
 
 defineProps<{
@@ -33,7 +32,7 @@ const emit = defineEmits<{
       <Skeleton
         v-for="n in 5"
         :key="n"
-        class="h-[4.5rem] w-full rounded-lg"
+        class="h-24 w-full rounded-lg"
       />
     </div>
     <ul
@@ -52,28 +51,27 @@ const emit = defineEmits<{
           <Card
             :class="
               cn(
-                'border-border/50 bg-muted/40 shadow-none transition-colors hover:border-border hover:bg-muted/60',
+                'overflow-hidden border-border/50 bg-muted/40 p-0 shadow-none transition-colors hover:border-border hover:bg-muted/60',
                 selectedFile === item.filepath && 'border-border bg-accent/50 ring-1 ring-ring/25',
               )
             "
           >
-            <CardContent class="space-y-1 p-3">
-              <span
-                v-if="displayFilename(item.filepath)"
-                class="block truncate text-xs font-medium text-muted-foreground"
-              >
-                {{ displayFilename(item.filepath) }}
-              </span>
-              <span class="block truncate text-sm leading-snug text-foreground/75">
-                {{ item.preview }}
+            <div
+              class="flex items-center gap-2 border-b border-border/50 bg-muted/70 px-3 py-1.5 text-xs"
+            >
+              <span class="min-w-0 flex-1 truncate font-medium text-muted-foreground">
+                {{ listDisplayName(item.filepath) }}
               </span>
               <span
-                v-if="item.subtitle"
-                class="block truncate text-xs text-muted-foreground"
+                v-if="item.headerRight"
+                class="shrink-0 text-muted-foreground"
               >
-                {{ item.subtitle }}
+                {{ item.headerRight }}
               </span>
-            </CardContent>
+            </div>
+            <p class="line-clamp-5 whitespace-pre-wrap p-3 text-sm leading-snug text-foreground/75">
+              {{ item.preview }}
+            </p>
           </Card>
         </button>
       </li>
