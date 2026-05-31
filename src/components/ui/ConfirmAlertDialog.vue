@@ -29,11 +29,30 @@ withDefaults(
 
 const emit = defineEmits<{
   confirm: []
+  cancel: []
 }>()
+
+let confirmed = false
+
+function onOpenChange(value: boolean) {
+  open.value = value
+  if (!value) {
+    if (!confirmed) emit('cancel')
+    confirmed = false
+  }
+}
+
+function onConfirm() {
+  confirmed = true
+  emit('confirm')
+}
 </script>
 
 <template>
-  <AlertDialogRoot v-model:open="open">
+  <AlertDialogRoot
+    :open="open"
+    @update:open="onOpenChange"
+  >
     <AlertDialogPortal>
       <AlertDialogOverlay class="fixed inset-0 z-[60] bg-black/50" />
       <AlertDialogContent
@@ -50,7 +69,10 @@ const emit = defineEmits<{
           {{ description }}
         </AlertDialogDescription>
         <div class="flex flex-wrap justify-end gap-2">
-          <AlertDialogCancel as-child>
+          <AlertDialogCancel
+            as-child
+            @click="emit('cancel')"
+          >
             <Button
               type="button"
               variant="outline"
@@ -60,7 +82,7 @@ const emit = defineEmits<{
           </AlertDialogCancel>
           <AlertDialogAction
             as-child
-            @click="emit('confirm')"
+            @click="onConfirm"
           >
             <Button
               type="button"

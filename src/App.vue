@@ -20,11 +20,20 @@ import SidebarViewTabs, { type SidebarView } from '@/components/SidebarViewTabs.
 import Editor from '@/components/Editor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import SyncButton from '@/components/SyncButton.vue'
+import ConfirmAlertDialog from '@/components/ui/ConfirmAlertDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
+import { useConfirmDialogHost } from '@/composables/useConfirmDialog'
 import { useNotes } from '@/composables/useNotes'
 import { usePwaUpdate } from '@/composables/usePwaUpdate'
 
 usePwaUpdate()
+
+const {
+  open: confirmOpen,
+  options: confirmOptions,
+  onConfirm: onConfirmDialog,
+  onCancel: onCancelDialog,
+} = useConfirmDialogHost()
 type MobileView = 'files' | 'editor'
 
 const {
@@ -266,6 +275,17 @@ onUnmounted(() => {
       @reset="handleReset"
     />
   </div>
+
+  <ConfirmAlertDialog
+    v-if="confirmOptions"
+    v-model="confirmOpen"
+    :title="confirmOptions.title"
+    :description="confirmOptions.description"
+    :confirm-label="confirmOptions.confirmLabel"
+    :cancel-label="confirmOptions.cancelLabel"
+    @confirm="onConfirmDialog"
+    @cancel="onCancelDialog"
+  />
 
   <Toaster
     position="bottom-center"

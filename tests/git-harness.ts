@@ -72,7 +72,7 @@ export function createGitHarness(repoUrl: string) {
         dir: REPO_DIR,
         url: repoUrl,
         singleBranch: true,
-        depth: 1,
+        depth: 10,
       })
     },
 

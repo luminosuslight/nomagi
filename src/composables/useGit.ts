@@ -4,7 +4,18 @@ import LightningFS from '@isomorphic-git/lightning-fs'
 import { reactive, ref } from 'vue'
 import { ensureBrowserStorage, withStorageErrors } from '@/lib/browserStorage'
 import { errorMessage, reportError } from '@/lib/errors'
+import { confirmDialog } from '@/composables/useConfirmDialog'
+import { isMissingGitObjectError } from '@/lib/gitRecovery'
 import { notesMergeDriver } from '@/lib/notesMergeDriver'
+
+export class RepositoryRepairCancelledError extends Error {
+  constructor() {
+    super(
+      'Repository repair was cancelled. Unsynced changes may remain — try syncing again or reset the app in settings.',
+    )
+    this.name = 'RepositoryRepairCancelledError'
+  }
+}
 
 export type GitSettings = {
   repoUrl: string
@@ -22,6 +33,10 @@ export type RecentNote = {
 
 const REPO_DIR = '/repo'
 const FS_NAME = 'git-notes-fs'
+/** Shallow clone on first setup. */
+const INITIAL_CLONE_DEPTH = 10
+/** Fetch / re-clone depth when local objects are missing (merge, push, amend, etc.). */
+const RECOVERY_HISTORY_DEPTH = 30
 /** Amend the previous commit when a new persist falls within this window. */
 export const COMMIT_AMEND_WINDOW_MS = 60_000
 const LAST_PUSHED_OID_KEY = 'lastPushedCommitOid'
@@ -126,6 +141,18 @@ function isPushNotFastForward(err: unknown): boolean {
   return err instanceof Errors.PushRejectedError && err.data.reason === 'not-fast-forward'
 }
 
+function remoteGitOptions() {
+  return {
+    fs,
+    http,
+    dir: REPO_DIR,
+    corsProxy: corsProxy(settings),
+    headers: authHeaders(settings),
+    onAuth: auth(settings),
+    singleBranch: true as const,
+  }
+}
+
 export function normalizeMarkdownFilename(name: string): string {
   const trimmed = name.trim()
   if (!trimmed) throw new Error('Filename is required')
@@ -218,14 +245,74 @@ async function resolveHeadOid(): Promise<string> {
   return git.resolveRef({ fs, dir: REPO_DIR, ref: 'HEAD' })
 }
 
+async function deepenShallowHistory(): Promise<void> {
+  await git.fetch({
+    ...remoteGitOptions(),
+    depth: RECOVERY_HISTORY_DEPTH,
+  })
+}
+
+async function confirmRecloneForRecovery(): Promise<void> {
+  const confirmed = await confirmDialog({
+    title: 'Re-download repository?',
+    description:
+      'Local Git data is damaged or incomplete and could not be repaired by fetching more history. Nomagi can delete the copy in this browser and download it again from the remote. Unsynced commits in this browser will be lost. Your remote repository is not changed.',
+    confirmLabel: 'Re-download',
+  })
+  if (!confirmed) throw new RepositoryRepairCancelledError()
+}
+
+async function recloneWithRecoveryDepth(): Promise<void> {
+  const repoUrl = settings.repoUrl.trim()
+  if (!repoUrl) throw new Error('Repository URL is required')
+  if (!settings.token.trim()) throw new Error('Personal access token is required')
+
+  await confirmRecloneForRecovery()
+
+  await withStorageErrors(async () => {
+    await rmRecursive(REPO_DIR)
+  })
+  await git.clone({
+    ...remoteGitOptions(),
+    url: repoUrl,
+    depth: RECOVERY_HISTORY_DEPTH,
+  })
+  isCloned.value = true
+  const head = await resolveHeadOid()
+  saveLastPushedCommitOid(head)
+}
+
+async function withMissingObjectRecovery<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (err) {
+    if (!isMissingGitObjectError(err)) throw err
+    const missingOid = err.data.what
+    reportError('git missing object', err)
+    console.warn('[git] missing object, fetching deeper history:', missingOid)
+
+    await deepenShallowHistory()
+    try {
+      return await fn()
+    } catch (retryErr) {
+      if (!isMissingGitObjectError(retryErr)) throw retryErr
+      console.warn('[git] still missing objects, re-cloning with depth', RECOVERY_HISTORY_DEPTH)
+      await recloneWithRecoveryDepth()
+      return await fn()
+    }
+  }
+}
+
 async function refreshCommitState() {
   try {
-    const head = await resolveHeadOid()
-    lastPushedCommitOid = localStorage.getItem(pushedOidStorageKey()) ?? head
-    hasUnpushedCommits.value = head !== lastPushedCommitOid
+    await withMissingObjectRecovery(async () => {
+      const head = await resolveHeadOid()
+      lastPushedCommitOid = localStorage.getItem(pushedOidStorageKey()) ?? head
+      hasUnpushedCommits.value = head !== lastPushedCommitOid
 
-    const commits = await git.log({ fs, dir: REPO_DIR, depth: 1 })
-    lastLocalCommitAt = commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : null
+      const commits = await git.log({ fs, dir: REPO_DIR, depth: 1 })
+      lastLocalCommitAt = commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : null
+    })
   } catch {
     lastLocalCommitAt = null
     hasUnpushedCommits.value = false
@@ -297,15 +384,9 @@ export function useGit() {
       await withGitLock(async () => {
         await withStorageErrors(async () => {
           await git.clone({
-            fs,
-            http,
-            dir: REPO_DIR,
+            ...remoteGitOptions(),
             url: settings.repoUrl.trim(),
-            corsProxy: corsProxy(settings),
-            headers: authHeaders(settings),
-            onAuth: auth(settings),
-            singleBranch: true,
-            depth: 1,
+            depth: INITIAL_CLONE_DEPTH,
           })
         })
         isCloned.value = true
@@ -319,50 +400,46 @@ export function useGit() {
   }
 
   async function pullWithNotesMerge() {
-    const branch = await git.currentBranch({ fs, dir: REPO_DIR })
-    if (!branch) throw new Error('No current branch')
+    await withMissingObjectRecovery(async () => {
+      const branch = await git.currentBranch({ fs, dir: REPO_DIR })
+      if (!branch) throw new Error('No current branch')
 
-    const { fetchHead } = await git.fetch({
-      fs,
-      http,
-      dir: REPO_DIR,
-      corsProxy: corsProxy(settings),
-      headers: authHeaders(settings),
-      onAuth: auth(settings),
-      singleBranch: true,
+      const { fetchHead } = await git.fetch(remoteGitOptions())
+
+      if (!fetchHead) return
+
+      const head = await resolveHeadOid()
+      if (fetchHead === head) return
+
+      await git.merge({
+        fs,
+        dir: REPO_DIR,
+        ours: branch,
+        theirs: fetchHead,
+        fastForward: true,
+        fastForwardOnly: false,
+        abortOnConflict: false,
+        mergeDriver: notesMergeDriver,
+        author: settings.author,
+        committer: settings.author,
+      })
+
+      // Merge updates HEAD/index; workdir can still hold pre-merge blobs. force applies
+      // the merged tree (notesMergeDriver already combined local + remote).
+      await git.checkout({ fs, dir: REPO_DIR, ref: branch, force: true })
     })
-
-    if (!fetchHead) return
-
-    const head = await resolveHeadOid()
-    if (fetchHead === head) return
-
-    await git.merge({
-      fs,
-      dir: REPO_DIR,
-      ours: branch,
-      theirs: fetchHead,
-      fastForward: true,
-      fastForwardOnly: false,
-      abortOnConflict: false,
-      mergeDriver: notesMergeDriver,
-      author: settings.author,
-      committer: settings.author,
-    })
-
-    // Merge updates HEAD/index; workdir can still hold pre-merge blobs. force applies
-    // the merged tree (notesMergeDriver already combined local + remote).
-    await git.checkout({ fs, dir: REPO_DIR, ref: branch, force: true })
   }
 
   async function pushToRemote() {
-    await git.push({
-      fs,
-      http,
-      dir: REPO_DIR,
-      corsProxy: corsProxy(settings),
-      headers: authHeaders(settings),
-      onAuth: auth(settings),
+    await withMissingObjectRecovery(async () => {
+      await git.push({
+        fs,
+        http,
+        dir: REPO_DIR,
+        corsProxy: corsProxy(settings),
+        headers: authHeaders(settings),
+        onAuth: auth(settings),
+      })
     })
   }
 
@@ -400,17 +477,20 @@ export function useGit() {
   }
 
   async function commitFile(filepath: string, message?: string) {
-    await git.add({ fs, dir: REPO_DIR, filepath })
-    const amend = await shouldAmendCommit()
-    await git.commit({
-      fs,
-      dir: REPO_DIR,
-      message: message ?? `update ${filepath}`,
-      author: settings.author,
-      amend,
+    let amended = false
+    await withMissingObjectRecovery(async () => {
+      await git.add({ fs, dir: REPO_DIR, filepath })
+      amended = await shouldAmendCommit()
+      await git.commit({
+        fs,
+        dir: REPO_DIR,
+        message: message ?? `update ${filepath}`,
+        author: settings.author,
+        amend: amended,
+      })
     })
     await refreshCommitState()
-    console.log(amend ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
+    console.log(amended ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
     await notifyAfterCommit()
   }
 
