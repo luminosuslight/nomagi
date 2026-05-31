@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@isomorphic-git/lightning-fs": "^4.6.2",
+    "@js-draw/material-icons": "^1.33.0",
     "@milkdown/crepe": "^7.21.1",
     "@milkdown/vue": "^7.21.1",
     "@tailwindcss/typography": "^0.5.19",
