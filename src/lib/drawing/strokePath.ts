@@ -26,11 +26,15 @@ export function penPressureWithTilt(event: PointerEvent): number {
   return pressure * (0.4 + 0.6 * tiltFactor)
 }
 
-export function polylinePathFromSamples(samples: Pick<DrawingSample, 'x' | 'y'>[]): string {
+export function polylinePathFromSamples(
+  samples: Pick<DrawingSample, 'x' | 'y'>[],
+  size = 1,
+): string {
   if (samples.length === 0) return ''
   if (samples.length === 1) {
     const { x, y } = samples[0]
-    return `M ${x} ${y} L ${x + 0.01} ${y}`
+    const radius = Math.max(size / 2, 0.5)
+    return `M ${x - radius} ${y} L ${x + radius} ${y}`
   }
 
   const [first, ...rest] = samples
@@ -93,5 +97,5 @@ export function pathFromSamples(
     return advancedPathFromSamples(samples, size, complete)
   }
 
-  return polylinePathFromSamples(samples)
+  return polylinePathFromSamples(samples, size)
 }

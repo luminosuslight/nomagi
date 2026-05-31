@@ -10,6 +10,7 @@ import Label from '@/components/ui/Label.vue'
 import { Slider } from '@/components/ui/slider'
 import { useDrawingCanvas } from '@/composables/useDrawingCanvas'
 import type { DrawingLine } from '@/lib/drawing/drawingTypes'
+import { installDrawingPointerCapture } from '@/lib/drawing/installDrawingPointerCapture'
 
 const props = defineProps<{
   lines: DrawingLine[] | Ref<DrawingLine[]>
@@ -76,6 +77,19 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
+function blockDocumentSelection(event: Event) {
+  event.preventDefault()
+}
+
+let removePointerCapture: (() => void) | null = null
+
+function teardownDrawingSurface() {
+  removePointerCapture?.()
+  removePointerCapture = null
+  document.removeEventListener('selectstart', blockDocumentSelection, { capture: true })
+  document.removeEventListener('dragstart', blockDocumentSelection, { capture: true })
+}
+
 watch(editing, async (isEditing) => {
   if (props.drawingEditing) {
     props.drawingEditing.value = isEditing
@@ -86,9 +100,19 @@ watch(editing, async (isEditing) => {
     bindCanvas()
     drawingOverlay.value?.focus({ preventScroll: true })
     window.addEventListener('keydown', onKeydown)
+    document.addEventListener('selectstart', blockDocumentSelection, { capture: true })
+    document.addEventListener('dragstart', blockDocumentSelection, { capture: true })
+    if (drawingOverlay.value) {
+      removePointerCapture = installDrawingPointerCapture(drawingOverlay.value, {
+        onDown: onStartDrawing,
+        onMove: onMove,
+        onUp: onEndDrawing,
+      })
+    }
     return
   }
 
+  teardownDrawingSurface()
   window.removeEventListener('keydown', onKeydown)
 })
 
@@ -97,6 +121,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  teardownDrawingSurface()
   window.removeEventListener('keydown', onKeydown)
   if (props.drawingEditing) {
     props.drawingEditing.value = false
@@ -216,10 +241,6 @@ onUnmounted(() => {
           class="block h-full w-full touch-none select-none cursor-crosshair bg-background"
           data-drawing-canvas
           contenteditable="false"
-          @pointerdown="onStartDrawing"
-          @pointermove="onMove"
-          @pointerup="onEndDrawing"
-          @pointercancel="onEndDrawing"
         >
           <DrawingPaths
             :lines="linesValue"

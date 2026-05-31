@@ -61,10 +61,26 @@ export function useDrawingCanvas(
     return added
   }
 
-  function commitStroke(strokePoints: DrawingSample[], complete = false) {
-    if (strokePoints.length === 0) return
+  function samplesForCommit(strokePoints: DrawingSample[], complete: boolean): DrawingSample[] {
+    if (!complete || strokePoints.length !== 1) return strokePoints
 
-    const nextPath = pathFromSamples(strokePoints, mode.value, size.value, complete)
+    const point = strokePoints[0]
+    const radius = Math.max(size.value / 2, 0.5)
+    return [
+      point,
+      {
+        x: point.x + radius * 0.2,
+        y: point.y + radius * 0.2,
+        pressure: point.pressure,
+      },
+    ]
+  }
+
+  function commitStroke(strokePoints: DrawingSample[], complete = false) {
+    const samples = samplesForCommit(strokePoints, complete)
+    if (samples.length === 0) return
+
+    const nextPath = pathFromSamples(samples, mode.value, size.value, complete)
     const lines = getLines().filter((item) => item.id !== strokeId.value)
 
     setLines([
@@ -141,7 +157,8 @@ export function useDrawingCanvas(
     if (!drawing.value) return
 
     appendPointerSamples(event)
-    commitStroke(points.value, true)
+    const strokePoints = samplesForCommit(points.value, true)
+    commitStroke(strokePoints, true)
     drawing.value = false
     svg.value?.select(`#id-${strokeId.value}`).remove()
     strokeId.value = crypto.randomUUID()

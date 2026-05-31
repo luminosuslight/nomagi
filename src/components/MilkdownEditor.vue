@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { editorViewCtx } from '@milkdown/core'
-import { markRaw, provide, ref, shallowRef, watch } from 'vue'
+import { inject, markRaw, provide, ref, shallowRef, watch } from 'vue'
 import { Milkdown, useEditor } from '@milkdown/vue'
 import { Crepe } from '@milkdown/crepe'
 import { replaceAll } from '@milkdown/kit/utils'
-import { editorOverlayRootKey } from '@/lib/editorOverlay'
+import { drawingEditingKey, editorOverlayRootKey } from '@/lib/editorOverlay'
 import {
   drawingEditingCtx,
   drawingOverlayRootCtx,
@@ -32,11 +32,15 @@ const emit = defineEmits<{
 }>()
 
 const crepeRef = shallowRef<Crepe>()
-const overlayRoot = ref<HTMLElement | null>(null)
-const drawingEditing = ref(false)
+const parentOverlayRoot = inject(editorOverlayRootKey, null)
+const localOverlayRoot = ref<HTMLElement | null>(null)
+const overlayRoot = parentOverlayRoot ?? localOverlayRoot
+const drawingEditing = inject(drawingEditingKey, ref(false))
 let lastUserChange = 0
 
-provide(editorOverlayRootKey, overlayRoot)
+if (!parentOverlayRoot) {
+  provide(editorOverlayRootKey, localOverlayRoot)
+}
 
 const { loading } = useEditor((root) => {
   const crepe = new Crepe({
@@ -116,7 +120,8 @@ watch(() => props.disabled, syncEditorReadonly)
 
 <template>
   <div
-    ref="overlayRoot"
+    v-if="!parentOverlayRoot"
+    ref="localOverlayRoot"
     class="absolute inset-0 flex min-h-0 flex-col"
   >
     <div
@@ -131,6 +136,19 @@ watch(() => props.disabled, syncEditorReadonly)
     >
       <Milkdown spellcheck="false" />
     </div>
+  </div>
+  <div
+    v-else
+    :class="
+      cn(
+        'milkdown-editor absolute inset-0 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
+        drawingEditing && 'pointer-events-none overflow-hidden select-none',
+        disabled && 'cursor-not-allowed opacity-50',
+        $props.class,
+      )
+    "
+  >
+    <Milkdown spellcheck="false" />
   </div>
 </template>
 
