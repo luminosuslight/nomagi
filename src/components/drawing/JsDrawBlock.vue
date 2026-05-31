@@ -2,7 +2,7 @@
 /* Parent passes a Ref via drawingEditing; updating .value is intentional. */
 /* eslint-disable vue/no-mutating-props */
 import { MaterialIconProvider } from '@js-draw/material-icons'
-import Editor from 'js-draw'
+import Editor, { DocumentPropertiesWidget } from 'js-draw'
 import 'js-draw/bundledStyles'
 
 import { computed, isRef, nextTick, onUnmounted, ref, watch, type Ref } from 'vue'
@@ -73,8 +73,10 @@ async function mountEditor() {
     iconProvider: new MaterialIconProvider(),
   })
 
-  const toolbar = editor.addToolbar()
-  toolbar.addSaveButton(() => stopEditing())
+  const toolbar = editor.addToolbar(false)
+  toolbar.addDefaultActionButtons()
+  toolbar.addWidgetsForPrimaryTools()
+  toolbar.addWidget(new DocumentPropertiesWidget(editor))
   toolbar.addExitButton(() => stopEditing())
 
   const root = editor.getRootElement()
@@ -171,27 +173,11 @@ watch(previewHost, (host) => {
       data-js-draw-editor
       contenteditable="false"
     >
-      <div class="flex min-h-0 flex-1 flex-col">
-        <div
-          ref="editorHost"
-          class="js-draw-host min-h-0 flex-1"
-          data-js-draw-host
-        />
-      </div>
       <div
-        class="flex shrink-0 justify-end border-t px-4 py-3"
-        data-drawing-controls
-        contenteditable="false"
-      >
-        <Button
-          type="button"
-          size="sm"
-          class="text-base"
-          @click="stopEditing"
-        >
-          Done
-        </Button>
-      </div>
+        ref="editorHost"
+        class="js-draw-host min-h-0 flex-1"
+        data-js-draw-host
+      />
     </div>
   </Teleport>
 </template>
