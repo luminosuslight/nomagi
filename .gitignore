@@ -28,3 +28,5 @@ dist-ssr
 
 secrets.txt
 todo.txt
+
+tests/fixtures/*.git

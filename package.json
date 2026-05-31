@@ -14,6 +14,7 @@
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
     "test:watch": "vitest",
     "prepare": "husky"
   },
@@ -60,8 +61,10 @@
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^9.39.4",
     "eslint-plugin-vue": "^10.9.1",
+    "git-http-mock-server": "^2.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
+    "memfs": "^4.57.3",
     "prettier": "^3.8.3",
     "tailwindcss": "^4.3.0",
     "typescript": "~6.0.2",
