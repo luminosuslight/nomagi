@@ -8,6 +8,7 @@ import JsDrawBlock from '@/components/drawing/JsDrawBlock.vue'
 import { shouldStopDrawingEvent } from '@/lib/drawing/pointerEvents'
 import { jsDrawSchema } from '@/lib/milkdown/jsDraw/jsDrawSchema'
 import { drawingEditingCtx, drawingOverlayRootCtx } from '@/lib/milkdown/drawing/overlayCtx'
+import { watchNodeViewEditable } from '@/lib/milkdown/drawing/watchNodeViewEditable'
 
 export const jsDrawView = $view(jsDrawSchema.node, (ctx): NodeViewConstructor => {
   return (initialNode, view, getPos) => {
@@ -38,10 +39,11 @@ export const jsDrawView = $view(jsDrawSchema.node, (ctx): NodeViewConstructor =>
 
     const bindAttrs = (node: Node) => {
       svgMarkup.value = node.attrs.svgMarkup as string
-      editable.value = view.editable
     }
 
     bindAttrs(initialNode)
+
+    const disposeEditableWatcher = watchNodeViewEditable(view, editable, drawingEditing)
 
     const disposeSelectedWatcher = watchEffect(() => {
       if (selected.value) dom.classList.add('selected')
@@ -67,6 +69,7 @@ export const jsDrawView = $view(jsDrawSchema.node, (ctx): NodeViewConstructor =>
         selected.value = false
       },
       destroy: () => {
+        disposeEditableWatcher?.()
         disposeSelectedWatcher()
         app.unmount()
         dom.remove()

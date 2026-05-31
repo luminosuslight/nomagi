@@ -9,6 +9,7 @@ import type { DrawingLine } from '@/lib/drawing/drawingTypes'
 import { shouldStopDrawingEvent } from '@/lib/drawing/pointerEvents'
 import { drawingSchema } from '@/lib/milkdown/drawing/drawingSchema'
 import { drawingEditingCtx, drawingOverlayRootCtx } from '@/lib/milkdown/drawing/overlayCtx'
+import { watchNodeViewEditable } from '@/lib/milkdown/drawing/watchNodeViewEditable'
 
 export const drawingView = $view(drawingSchema.node, (ctx): NodeViewConstructor => {
   return (initialNode, view, getPos) => {
@@ -39,10 +40,11 @@ export const drawingView = $view(drawingSchema.node, (ctx): NodeViewConstructor 
 
     const bindAttrs = (node: Node) => {
       lines.value = node.attrs.lines as DrawingLine[]
-      editable.value = view.editable
     }
 
     bindAttrs(initialNode)
+
+    const disposeEditableWatcher = watchNodeViewEditable(view, editable, drawingEditing)
 
     const disposeSelectedWatcher = watchEffect(() => {
       if (selected.value) dom.classList.add('selected')
@@ -68,6 +70,7 @@ export const drawingView = $view(drawingSchema.node, (ctx): NodeViewConstructor 
         selected.value = false
       },
       destroy: () => {
+        disposeEditableWatcher?.()
         disposeSelectedWatcher()
         app.unmount()
         dom.remove()
