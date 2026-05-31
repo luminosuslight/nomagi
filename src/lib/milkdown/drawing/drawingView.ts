@@ -23,8 +23,6 @@ export const drawingView = $view(drawingSchema.node, (ctx): NodeViewConstructor 
     const drawingEditing = ctx.get(drawingEditingCtx.key)
 
     const setLines = (nextLines: DrawingLine[]) => {
-      if (!view.editable) return
-
       const pos = getPos()
       if (pos == null) return
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /* Parent passes a Ref via drawingEditing; updating .value is intentional. */
 /* eslint-disable vue/no-mutating-props */
-import { computed, isRef, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
+import { computed, isRef, nextTick, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
 import { Pencil } from 'lucide-vue-next'
 import DrawingPaths from '@/components/drawing/DrawingPaths.vue'
 import Button from '@/components/ui/Button.vue'
@@ -21,6 +21,7 @@ const props = defineProps<{
 
 const editing = ref(false)
 const editCanvas = ref<SVGSVGElement | null>(null)
+const drawingOverlay = ref<HTMLElement | null>(null)
 
 const linesValue = computed(() => (isRef(props.lines) ? props.lines.value : props.lines))
 
@@ -50,7 +51,8 @@ const sizeModel = computed({
   },
 })
 
-function startEditing() {
+function startEditing(event: MouseEvent) {
+  event.preventDefault()
   editing.value = true
 }
 
@@ -64,12 +66,14 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-watch(editing, (isEditing) => {
+watch(editing, async (isEditing) => {
   if (props.drawingEditing) {
     props.drawingEditing.value = isEditing
   }
 
   if (isEditing) {
+    await nextTick()
+    drawingOverlay.value?.focus({ preventScroll: true })
     requestAnimationFrame(() => bindCanvas())
     window.addEventListener('keydown', onKeydown)
     return
@@ -103,7 +107,7 @@ onUnmounted(() => {
       class="absolute left-2 top-2 z-10 gap-1.5 bg-background/90 text-base shadow-sm backdrop-blur-sm"
       data-drawing-edit
       contenteditable="false"
-      @click="startEditing"
+      @click.stop="startEditing"
     >
       <Pencil class="size-4" />
       Edit
@@ -124,7 +128,9 @@ onUnmounted(() => {
     :to="overlayTarget"
   >
     <div
-      class="absolute inset-0 z-50 flex min-h-0 touch-none flex-col overscroll-contain bg-background"
+      ref="drawingOverlay"
+      tabindex="-1"
+      class="absolute inset-0 z-50 flex min-h-0 touch-none flex-col overscroll-contain bg-background outline-none"
       data-drawing-editor
       contenteditable="false"
     >

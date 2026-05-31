@@ -22,8 +22,6 @@ export const jsDrawView = $view(jsDrawSchema.node, (ctx): NodeViewConstructor =>
     const drawingEditing = ctx.get(drawingEditingCtx.key)
 
     const setSvgMarkup = (nextMarkup: string) => {
-      if (!view.editable) return
-
       const pos = getPos()
       if (pos == null) return
 

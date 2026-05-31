@@ -87,17 +87,19 @@ async function mountEditor() {
   if (markup) {
     await editor.loadFromSVG(markup)
   }
+
+  editor.focus()
 }
 
-function startEditing() {
+function startEditing(event: MouseEvent) {
+  event.preventDefault()
   editing.value = true
 }
 
 function stopEditing() {
-  if (editor) {
-    props.onUpdateSvgMarkup(editor.toSVG().outerHTML)
-  }
+  const markup = editor ? editor.toSVG().outerHTML : null
   editing.value = false
+  if (markup) props.onUpdateSvgMarkup(markup)
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -152,7 +154,7 @@ watch(previewHost, (host) => {
       class="absolute left-2 top-2 z-10 gap-1.5 bg-background/90 text-base shadow-sm backdrop-blur-sm"
       data-drawing-edit
       contenteditable="false"
-      @click="startEditing"
+      @click.stop="startEditing"
     >
       <Pencil class="size-4" />
       Edit

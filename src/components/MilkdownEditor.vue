@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { editorViewCtx } from '@milkdown/core'
 import { markRaw, provide, ref, shallowRef, watch } from 'vue'
 import { Milkdown, useEditor } from '@milkdown/vue'
 import { Crepe } from '@milkdown/crepe'
@@ -91,12 +92,26 @@ watch(
   },
 )
 
-watch(
-  () => props.disabled,
-  (disabled) => {
-    crepeRef.value?.setReadonly(!!disabled)
-  },
-)
+function syncEditorReadonly() {
+  const crepe = crepeRef.value
+  if (!crepe || loading.value) return
+  crepe.setReadonly(!!props.disabled || drawingEditing.value)
+}
+
+function blurProseMirror() {
+  const crepe = crepeRef.value
+  if (!crepe || loading.value) return
+  crepe.editor.action((ctx) => {
+    ctx.get(editorViewCtx).dom.blur()
+  })
+}
+
+watch(drawingEditing, (editing) => {
+  syncEditorReadonly()
+  if (editing) blurProseMirror()
+})
+
+watch(() => props.disabled, syncEditorReadonly)
 </script>
 
 <template>
