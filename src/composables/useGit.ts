@@ -350,7 +350,9 @@ export function useGit() {
       committer: settings.author,
     })
 
-    await git.checkout({ fs, dir: REPO_DIR, ref: branch })
+    // Merge updates HEAD/index; workdir can still hold pre-merge blobs. force applies
+    // the merged tree (notesMergeDriver already combined local + remote).
+    await git.checkout({ fs, dir: REPO_DIR, ref: branch, force: true })
   }
 
   async function pushToRemote() {
