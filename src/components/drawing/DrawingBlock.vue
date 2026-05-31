@@ -197,11 +197,11 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="min-h-0 flex-1 bg-muted/20 p-4">
+      <div class="min-h-0 flex-1">
         <svg
           ref="editCanvas"
           viewBox="0 0 500 250"
-          class="mx-auto h-full max-h-full w-full max-w-5xl touch-none cursor-crosshair rounded-md border border-border/60 bg-background"
+          class="block h-full w-full touch-none cursor-crosshair bg-background"
           data-drawing-canvas
           contenteditable="false"
           @pointerdown="onStartDrawing"
