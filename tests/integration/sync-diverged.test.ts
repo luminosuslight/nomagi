@@ -22,4 +22,16 @@ describe.sequential('sync with diverged remote (git-http-mock-server)', () => {
     expect(merged).toContain('local')
     expect(merged).toContain('remote')
   })
+
+  it('keeps remote-only files when local diverged without them', async () => {
+    const client = createGitHarness(repoUrl())
+    await client.clone()
+    pushRemoteNoteToFixture('remote-only.md', 'from remote\n')
+    await client.writeFile('note.md', 'local\n')
+
+    await expect(client.sync()).resolves.toBeUndefined()
+
+    await expect(client.readFile('remote-only.md')).resolves.toContain('from remote')
+    await expect(client.readFile('note.md')).resolves.toContain('local')
+  })
 })
