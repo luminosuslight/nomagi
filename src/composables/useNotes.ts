@@ -145,16 +145,19 @@ export function useNotes() {
       return
     }
 
+    const existing = new Set(await git.listMarkdownFiles())
     const byRecent = await git.listRecentNotes()
     recentNotes.value = await Promise.all(
-      byRecent.map(async (note) => {
-        try {
-          const text = await git.readFile(note.filepath)
-          return { ...note, preview: previewFromContent(text) }
-        } catch {
-          return { ...note, preview: 'Empty note' }
-        }
-      }),
+      byRecent
+        .filter((note) => existing.has(note.filepath))
+        .map(async (note) => {
+          try {
+            const text = await git.readFile(note.filepath)
+            return { ...note, preview: previewFromContent(text) }
+          } catch {
+            return { ...note, preview: 'Empty note' }
+          }
+        }),
     )
   }
 
@@ -241,6 +244,24 @@ export function useNotes() {
     return filename
   }
 
+  async function deleteFile(filepath: string) {
+    if (selectedFile.value === filepath) {
+      clearSaveTimer()
+      skipSave = true
+      selectedFile.value = null
+      content.value = ''
+      lastPersistedContent.value = ''
+      skipSave = false
+    }
+
+    try {
+      await git.deleteFile(filepath)
+    } finally {
+      await refreshFiles()
+    }
+    queueBackgroundSync({ reload: false })
+  }
+
   function handleVisibilityChange() {
     if (document.visibilityState === 'hidden') {
       void flush().catch((err) => reportError('flush', err))
@@ -272,5 +293,6 @@ export function useNotes() {
     leaveCurrentFile,
     syncNotes,
     createFile,
+    deleteFile,
   }
 }

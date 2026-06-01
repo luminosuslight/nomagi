@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { Folder } from 'lucide-vue-next'
+import { Folder, Trash2 } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { listDisplayName } from '@/lib/noteDisplay'
 import type { FileTreeNode } from '@/lib/fileTree'
+import Button from '@/components/ui/Button.vue'
 
 defineProps<{
   nodes: FileTreeNode[]
   depth: number
   selectedFile: string | null
+  deleteDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
   select: [filepath: string]
+  delete: [filepath: string]
 }>()
 
 const indentStyle = (depth: number) => ({ paddingLeft: `${12 + depth * 12}px` })
@@ -38,27 +41,41 @@ const indentStyle = (depth: number) => ({ paddingLeft: `${12 + depth * 12}px` })
           :nodes="node.children"
           :depth="depth + 1"
           :selected-file="selectedFile"
+          :delete-disabled="deleteDisabled"
           @select="emit('select', $event)"
+          @delete="emit('delete', $event)"
         />
       </ul>
     </li>
     <li
       v-else
-      class="list-none"
+      class="group list-none flex items-center rounded-md pr-1 transition-colors hover:bg-accent"
+      :class="selectedFile === node.path && 'bg-accent'"
+      :style="indentStyle(depth)"
     >
       <button
         type="button"
         :class="
           cn(
-            'w-full rounded-md py-2 pr-3 text-left text-sm transition-colors hover:bg-accent',
-            selectedFile === node.path && 'bg-accent font-medium',
+            'min-w-0 flex-1 truncate py-2 pr-1 text-left text-sm transition-colors',
+            selectedFile === node.path && 'font-medium',
           )
         "
-        :style="indentStyle(depth)"
         @click="emit('select', node.path)"
       >
         {{ listDisplayName(node.path) }}
       </button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        class="size-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+        aria-label="Delete note"
+        :disabled="deleteDisabled"
+        @click.stop="emit('delete', node.path)"
+      >
+        <Trash2 class="size-4" />
+      </Button>
     </li>
   </template>
 </template>

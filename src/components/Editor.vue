@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { provide, ref } from 'vue'
-import { ArrowLeft, Plus } from 'lucide-vue-next'
+import { ArrowLeft, Plus, Trash2 } from 'lucide-vue-next'
 import { MilkdownProvider } from '@milkdown/vue'
 import MilkdownEditor from '@/components/MilkdownEditor.vue'
 import Button from '@/components/ui/Button.vue'
@@ -14,12 +14,14 @@ defineProps<{
   isLoading: boolean
   showBack?: boolean
   canCreateNote?: boolean
+  deleteDisabled?: boolean
 }>()
 
 defineEmits<{
   'update:modelValue': [value: string]
   back: []
   newNote: []
+  delete: []
 }>()
 
 const editorPanel = ref<HTMLElement | null>(null)
@@ -56,6 +58,18 @@ provide(drawingEditingKey, drawingEditing)
       <h2 class="min-w-0 flex-1 truncate text-sm font-medium">
         {{ filename ?? 'Select a note' }}
       </h2>
+      <Button
+        v-if="filename"
+        type="button"
+        variant="ghost"
+        size="icon"
+        class="shrink-0"
+        aria-label="Delete note"
+        :disabled="deleteDisabled"
+        @click="$emit('delete')"
+      >
+        <Trash2 class="size-4" />
+      </Button>
     </div>
     <div
       v-if="isLoading"

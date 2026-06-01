@@ -499,7 +499,13 @@ export function useGit() {
     const withDates = await Promise.all(
       names.map(async (filepath) => {
         try {
-          const commits = await git.log({ fs, dir: REPO_DIR, filepath, depth: 1 })
+          const commits = await git.log({
+            fs,
+            dir: REPO_DIR,
+            filepath,
+            depth: 1,
+            force: true,
+          })
           const lastModified = commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : 0
           return { filepath, lastModified }
         } catch {
@@ -541,6 +547,29 @@ export function useGit() {
     return filename
   }
 
+  async function deleteFile(filepath: string) {
+    await withGitLock(async () => {
+      await withStorageErrors(async () => {
+        await pfs.unlink(`${REPO_DIR}/${filepath}`)
+      })
+      let amended = false
+      await withMissingObjectRecovery(async () => {
+        await git.updateIndex({ fs, dir: REPO_DIR, filepath, remove: true })
+        amended = await shouldAmendCommit()
+        await git.commit({
+          fs,
+          dir: REPO_DIR,
+          message: `delete ${filepath}`,
+          author: settings.author,
+          amend: amended,
+        })
+      })
+      await refreshCommitState()
+      console.log(amended ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
+      await notifyAfterCommit()
+    })
+  }
+
   function onAfterCommit(listener: () => void | Promise<void>) {
     afterCommitListeners.add(listener)
     return () => afterCommitListeners.delete(listener)
@@ -565,6 +594,7 @@ export function useGit() {
     readFile,
     writeFile,
     createFile,
+    deleteFile,
     onAfterCommit,
   }
 }

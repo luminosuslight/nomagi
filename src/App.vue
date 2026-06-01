@@ -9,6 +9,7 @@ import {
 } from '@/lib/browserStorage'
 import { errorMessage, reportError } from '@/lib/errors'
 import { formatRelativeTime } from '@/lib/formatRelativeTime'
+import { listDisplayName } from '@/lib/noteDisplay'
 import { Plus, Settings } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
@@ -23,7 +24,7 @@ import { listFoldersFromFiles } from '@/lib/noteFolders'
 import SyncButton from '@/components/SyncButton.vue'
 import ConfirmAlertDialog from '@/components/ui/ConfirmAlertDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
-import { useConfirmDialogHost } from '@/composables/useConfirmDialog'
+import { confirmDialog, useConfirmDialogHost } from '@/composables/useConfirmDialog'
 import { useNotes } from '@/composables/useNotes'
 import { usePwaUpdate } from '@/composables/usePwaUpdate'
 
@@ -58,6 +59,7 @@ const {
   leaveCurrentFile,
   refreshFiles,
   createFile,
+  deleteFile,
   readFile,
 } = useNotes()
 
@@ -137,6 +139,29 @@ async function handleCreateNote(payload: { name?: string; folder: string }) {
     reportError('createFile', err)
     toast.error(errorMessage(err))
   }
+}
+
+async function handleDelete(filepath: string) {
+  if (!isCloned.value || isBusy.value) return
+
+  const confirmed = await confirmDialog({
+    title: 'Delete note?',
+    description: `“${listDisplayName(filepath)}” will be removed from this repository. This cannot be undone.`,
+    confirmLabel: 'Delete',
+  })
+  if (!confirmed) return
+
+  try {
+    await deleteFile(filepath)
+    toast.success('Note deleted')
+  } catch (err) {
+    reportError('deleteFile', err)
+    toast.error(errorMessage(err))
+  }
+}
+
+function handleEditorDelete() {
+  if (selectedFile.value) void handleDelete(selectedFile.value)
 }
 
 function handleOnline() {
@@ -237,7 +262,9 @@ onUnmounted(() => {
         :files="files"
         :selected-file="selectedFile"
         :is-loading="isLoadingFiles"
+        :delete-disabled="isBusy"
         @select="selectFile"
+        @delete="handleDelete"
       />
       <NotePreviewList
         v-else-if="sidebarView === 'recent'"
@@ -269,8 +296,10 @@ onUnmounted(() => {
         :is-loading="isLoadingContent"
         :show-back="mobileView === 'editor'"
         :can-create-note="isCloned && !isBusy"
+        :delete-disabled="isBusy || !selectedFile"
         @back="handleEditorBack"
         @new-note="handleNewFile"
+        @delete="handleEditorDelete"
       />
     </main>
 

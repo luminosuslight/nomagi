@@ -37,13 +37,20 @@ let confirmed = false
 function onOpenChange(value: boolean) {
   open.value = value
   if (!value) {
-    if (!confirmed) emit('cancel')
-    confirmed = false
+    // Defer so AlertDialogAction close does not emit cancel before @click confirm runs.
+    queueMicrotask(() => {
+      if (!confirmed) emit('cancel')
+      confirmed = false
+    })
   }
 }
 
-function onConfirm() {
+function markConfirmed() {
   confirmed = true
+}
+
+function onConfirm() {
+  markConfirmed()
   emit('confirm')
 }
 </script>
@@ -82,6 +89,7 @@ function onConfirm() {
           </AlertDialogCancel>
           <AlertDialogAction
             as-child
+            @pointerdown="markConfirmed"
             @click="onConfirm"
           >
             <Button

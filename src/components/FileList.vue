@@ -10,10 +10,12 @@ const props = defineProps<{
   selectedFile: string | null
   isLoading: boolean
   emptyMessage?: string
+  deleteDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
   select: [filepath: string]
+  delete: [filepath: string]
 }>()
 
 const tree = computed(() => buildFileTree(props.files))
@@ -39,7 +41,9 @@ const tree = computed(() => buildFileTree(props.files))
         :nodes="tree"
         :depth="0"
         :selected-file="selectedFile"
+        :delete-disabled="deleteDisabled"
         @select="emit('select', $event)"
+        @delete="emit('delete', $event)"
       />
     </ul>
     <p
