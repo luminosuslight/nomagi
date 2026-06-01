@@ -12,7 +12,6 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime'
 import { Plus, Settings } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
-import Separator from '@/components/ui/Separator.vue'
 import FileList from '@/components/FileList.vue'
 import NotePreviewList from '@/components/NotePreviewList.vue'
 import SearchNotesPanel from '@/components/SearchNotesPanel.vue'
@@ -196,7 +195,7 @@ onUnmounted(() => {
         )
       "
     >
-      <div class="flex items-center justify-between gap-2 px-4 py-3">
+      <div class="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
         <h1 class="text-base font-semibold">
           Nomagi
         </h1>
@@ -219,7 +218,6 @@ onUnmounted(() => {
           </Button>
         </div>
       </div>
-      <Separator />
       <div class="p-3 pb-0">
         <Button
           type="button"
@@ -270,7 +268,9 @@ onUnmounted(() => {
         :filename="selectedFile"
         :is-loading="isLoadingContent"
         :show-back="mobileView === 'editor'"
+        :can-create-note="isCloned && !isBusy"
         @back="handleEditorBack"
+        @new-note="handleNewFile"
       />
     </main>
 

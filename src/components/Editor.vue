@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { provide, ref } from 'vue'
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft, Plus } from 'lucide-vue-next'
 import { MilkdownProvider } from '@milkdown/vue'
 import MilkdownEditor from '@/components/MilkdownEditor.vue'
 import Button from '@/components/ui/Button.vue'
@@ -13,11 +13,13 @@ defineProps<{
   modelValue: string
   isLoading: boolean
   showBack?: boolean
+  canCreateNote?: boolean
 }>()
 
 defineEmits<{
   'update:modelValue': [value: string]
   back: []
+  newNote: []
 }>()
 
 const editorPanel = ref<HTMLElement | null>(null)
@@ -35,7 +37,7 @@ provide(drawingEditingKey, drawingEditing)
     <div
       :class="
         cn(
-          'flex shrink-0 items-center gap-3 border-b px-4 py-3',
+          'flex h-14 shrink-0 items-center gap-3 border-b px-4',
           drawingEditing && 'pointer-events-none select-none',
         )
       "
@@ -66,11 +68,24 @@ provide(drawingEditingKey, drawingEditing)
       v-else
       class="relative min-h-0 flex-1"
     >
-      <MilkdownProvider>
+      <div
+        v-if="!filename"
+        class="flex h-full flex-col items-center justify-center p-4"
+      >
+        <Button
+          type="button"
+          variant="outline"
+          :disabled="!canCreateNote"
+          @click="$emit('newNote')"
+        >
+          <Plus class="size-4" />
+          New note
+        </Button>
+      </div>
+      <MilkdownProvider v-else>
         <MilkdownEditor
-          :key="filename ?? 'none'"
+          :key="filename"
           :model-value="modelValue"
-          :disabled="!filename"
           placeholder="Start writing…"
           @update:model-value="$emit('update:modelValue', $event)"
         />
