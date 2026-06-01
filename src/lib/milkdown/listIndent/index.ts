@@ -1,2 +1,2 @@
 export { listIndentSpaceInputRule } from '@/lib/milkdown/listIndent/listIndentInputRule'
-export { listOutdentBackspaceShortcut } from '@/lib/milkdown/listIndent/listOutdentBackspaceShortcut'
+export { listOutdentBackspacePlugin } from '@/lib/milkdown/listIndent/listOutdentBackspace'

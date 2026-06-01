@@ -15,7 +15,7 @@ import {
   sketchSlashMenuConfig,
 } from '@/lib/milkdown/drawing'
 import { jsDrawRemark, jsDrawSchema, jsDrawView } from '@/lib/milkdown/jsDraw'
-import { listIndentSpaceInputRule, listOutdentBackspaceShortcut } from '@/lib/milkdown/listIndent'
+import { listIndentSpaceInputRule, listOutdentBackspacePlugin } from '@/lib/milkdown/listIndent'
 import { cn } from '@/lib/utils'
 
 import '@milkdown/crepe/theme/common/style.css'
@@ -70,7 +70,7 @@ const { loading } = useEditor((root) => {
     .use(jsDrawSchema)
     .use(jsDrawView)
     .use(listIndentSpaceInputRule)
-    .use(listOutdentBackspaceShortcut)
+    .use(listOutdentBackspacePlugin)
 
   crepe.on((listener) => {
     listener.markdownUpdated((_ctx, markdown) => {
