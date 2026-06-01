@@ -7,6 +7,7 @@ import { errorMessage, reportError } from '@/lib/errors'
 import { confirmDialog } from '@/composables/useConfirmDialog'
 import { isMissingGitObjectError } from '@/lib/gitRecovery'
 import { notesMergeDriver } from '@/lib/notesMergeDriver'
+import { resolveNewNoteFilename, type ResolveNewNoteOptions } from '@/lib/noteFilenames'
 
 export class RepositoryRepairCancelledError extends Error {
   constructor() {
@@ -153,46 +154,40 @@ function remoteGitOptions() {
   }
 }
 
-export function normalizeMarkdownFilename(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed) throw new Error('Filename is required')
-  if (trimmed.includes('/') || trimmed.includes('\\')) {
-    throw new Error('Filename must not contain path separators')
-  }
-  return trimmed.endsWith('.md') ? trimmed : `${trimmed}.md`
-}
+async function ensureParentDirs(filepath: string): Promise<void> {
+  const slash = filepath.lastIndexOf('/')
+  if (slash === -1) return
 
-function padTwo(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-export function generateIsoDateFilename(now = new Date()): string {
-  const y = now.getFullYear()
-  const m = padTwo(now.getMonth() + 1)
-  const d = padTwo(now.getDate())
-  const h = padTwo(now.getHours())
-  const min = padTwo(now.getMinutes())
-  const s = padTwo(now.getSeconds())
-  return `${y}-${m}-${d}T${h}-${min}-${s}.md`
-}
-
-export function uniqueIsoDateFilename(existingFiles: Iterable<string>, now = new Date()): string {
-  const existing = new Set(existingFiles)
-  const base = generateIsoDateFilename(now)
-  if (!existing.has(base)) return base
-
-  let suffix = 2
-  while (true) {
-    const candidate = base.replace(/\.md$/, `-${suffix}.md`)
-    if (!existing.has(candidate)) return candidate
-    suffix++
+  const parts = filepath.slice(0, slash).split('/')
+  let dir = REPO_DIR
+  for (const part of parts) {
+    dir = `${dir}/${part}`
+    try {
+      await pfs.mkdir(dir)
+    } catch {
+      // Directory already exists
+    }
   }
 }
 
-export function resolveNewNoteFilename(input: string | undefined, existingFiles: string[]): string {
-  const trimmed = input?.trim() ?? ''
-  if (!trimmed) return uniqueIsoDateFilename(existingFiles)
-  return normalizeMarkdownFilename(trimmed)
+async function collectMarkdownFiles(dir: string, prefix: string): Promise<string[]> {
+  const entries = await pfs.readdir(dir)
+  const files: string[] = []
+
+  for (const name of entries) {
+    if (name.startsWith('.')) continue
+    const fullPath = `${dir}/${name}`
+    const stat = await pfs.stat(fullPath)
+    if (stat.isDirectory()) {
+      const nested = await collectMarkdownFiles(fullPath, prefix ? `${prefix}/${name}` : name)
+      files.push(...nested)
+      continue
+    }
+    if (!name.endsWith('.md')) continue
+    files.push(prefix ? `${prefix}/${name}` : name)
+  }
+
+  return files
 }
 
 async function repoExists(): Promise<boolean> {
@@ -495,15 +490,7 @@ export function useGit() {
   }
 
   async function listMarkdownFiles(): Promise<string[]> {
-    const entries = await pfs.readdir(REPO_DIR)
-    const files: string[] = []
-
-    for (const name of entries) {
-      if (!name.endsWith('.md') || name.startsWith('.')) continue
-      const stat = await pfs.stat(`${REPO_DIR}/${name}`)
-      if (stat.isFile()) files.push(name)
-    }
-
+    const files = await collectMarkdownFiles(REPO_DIR, '')
     return files.sort()
   }
 
@@ -532,15 +519,16 @@ export function useGit() {
   async function writeFile(filepath: string, content: string) {
     await withGitLock(async () => {
       await withStorageErrors(async () => {
+        await ensureParentDirs(filepath)
         await pfs.writeFile(`${REPO_DIR}/${filepath}`, content, 'utf8')
       })
       await commitFile(filepath)
     })
   }
 
-  async function createFile(filepath?: string, content = '') {
+  async function createFile(options?: ResolveNewNoteOptions, content = '') {
     const existing = await listMarkdownFiles()
-    const filename = resolveNewNoteFilename(filepath, existing)
+    const filename = resolveNewNoteFilename(options, existing)
 
     try {
       await pfs.stat(`${REPO_DIR}/${filename}`)

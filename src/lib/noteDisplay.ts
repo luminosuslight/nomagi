@@ -3,19 +3,26 @@ const ISO_DATE_FILENAME = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(-\d+)?\.md$/
 /** Markdown list marker: dash, asterisk, or plus. */
 const LIST_MARKER = '(?:[-*+])'
 
+export function noteBasename(filepath: string): string {
+  const slash = filepath.lastIndexOf('/')
+  return slash === -1 ? filepath : filepath.slice(slash + 1)
+}
+
 export function isIsoDateFilename(name: string): boolean {
   return ISO_DATE_FILENAME.test(name)
 }
 
 export function displayFilename(filepath: string): string | null {
-  if (isIsoDateFilename(filepath)) return null
-  return filepath.endsWith('.md') ? filepath.slice(0, -3) : filepath
+  const basename = noteBasename(filepath)
+  if (isIsoDateFilename(basename)) return null
+  return basename.endsWith('.md') ? basename.slice(0, -3) : basename
 }
 
 export function listDisplayName(filepath: string): string {
   const named = displayFilename(filepath)
   if (named) return named
-  return filepath.endsWith('.md') ? filepath.slice(0, -3) : filepath
+  const basename = noteBasename(filepath)
+  return basename.endsWith('.md') ? basename.slice(0, -3) : basename
 }
 
 function stripHtmlForPreview(text: string): string {

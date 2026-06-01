@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { cn } from '@/lib/utils'
+import { computed } from 'vue'
+import { buildFileTree } from '@/lib/fileTree'
+import FileTreeItems from '@/components/FileTreeItems.vue'
 import ScrollArea from '@/components/ui/ScrollArea.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 
-defineProps<{
+const props = defineProps<{
   files: string[]
   selectedFile: string | null
   isLoading: boolean
@@ -13,6 +15,8 @@ defineProps<{
 const emit = defineEmits<{
   select: [filepath: string]
 }>()
+
+const tree = computed(() => buildFileTree(props.files))
 </script>
 
 <template>
@@ -29,25 +33,14 @@ const emit = defineEmits<{
     </div>
     <ul
       v-else-if="files.length"
-      class="p-2 space-y-1"
+      class="space-y-1 p-2"
     >
-      <li
-        v-for="file in files"
-        :key="file"
-      >
-        <button
-          type="button"
-          :class="
-            cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent',
-              selectedFile === file && 'bg-accent font-medium',
-            )
-          "
-          @click="emit('select', file)"
-        >
-          {{ file }}
-        </button>
-      </li>
+      <FileTreeItems
+        :nodes="tree"
+        :depth="0"
+        :selected-file="selectedFile"
+        @select="emit('select', $event)"
+      />
     </ul>
     <p
       v-else

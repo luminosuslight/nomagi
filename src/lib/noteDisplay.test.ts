@@ -9,6 +9,14 @@ describe('listDisplayName', () => {
   it('shows ISO auto-names without .md', () => {
     expect(listDisplayName('2026-05-31T12-30-45.md')).toBe('2026-05-31T12-30-45')
   })
+
+  it('uses basename for nested ISO paths', () => {
+    expect(listDisplayName('quick_notes/2026-05-31T12-30-45.md')).toBe('2026-05-31T12-30-45')
+  })
+
+  it('uses basename for nested named paths', () => {
+    expect(listDisplayName('docs/my-note.md')).toBe('my-note')
+  })
 })
 
 describe('stripMarkdownForPreview', () => {

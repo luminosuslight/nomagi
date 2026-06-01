@@ -234,8 +234,8 @@ export function useNotes() {
     if (filepath) void openFile(filepath, prevFilepath ?? null)
   })
 
-  async function createFile(name?: string) {
-    const filename = await git.createFile(name, '')
+  async function createFile(options?: { name?: string; folder?: string }) {
+    const filename = await git.createFile(options, '')
     files.value = await git.listMarkdownFiles()
     selectedFile.value = filename
     return filename

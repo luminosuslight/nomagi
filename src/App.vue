@@ -19,6 +19,8 @@ import SearchNotesPanel from '@/components/SearchNotesPanel.vue'
 import SidebarViewTabs, { type SidebarView } from '@/components/SidebarViewTabs.vue'
 import Editor from '@/components/Editor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
+import NewNoteDialog from '@/components/NewNoteDialog.vue'
+import { listFoldersFromFiles } from '@/lib/noteFolders'
 import SyncButton from '@/components/SyncButton.vue'
 import ConfirmAlertDialog from '@/components/ui/ConfirmAlertDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
@@ -61,6 +63,9 @@ const {
 } = useNotes()
 
 const settingsOpen = ref(false)
+const newNoteOpen = ref(false)
+
+const noteFolders = computed(() => listFoldersFromFiles(files.value))
 const sidebarView = ref<SidebarView>('recent')
 const mobileView = ref<MobileView>('files')
 const isOnline = ref(navigator.onLine)
@@ -117,12 +122,16 @@ function handleEditorBack() {
   void leaveCurrentFile().catch((err) => reportError('sync', err))
 }
 
-async function handleNewFile() {
-  const name = window.prompt('New note filename', '')
-  if (name === null) return
+function handleNewFile() {
+  newNoteOpen.value = true
+}
 
+async function handleCreateNote(payload: { name?: string; folder: string }) {
   try {
-    const filename = await createFile(name.trim() || undefined)
+    const filename = await createFile({
+      name: payload.name,
+      folder: payload.folder,
+    })
     mobileView.value = 'editor'
     toast.success(`Created ${filename}`)
   } catch (err) {
@@ -273,6 +282,13 @@ onUnmounted(() => {
       @save="updateSettings"
       @clone="handleClone"
       @reset="handleReset"
+    />
+
+    <NewNoteDialog
+      v-model="newNoteOpen"
+      :folders="noteFolders"
+      :is-busy="isBusy"
+      @create="handleCreateNote"
     />
   </div>
 
