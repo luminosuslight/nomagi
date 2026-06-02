@@ -52,7 +52,7 @@ A public test instance is available at [notes.luminosus.org](https://notes.lumin
 
 ## Self-hosting
 
-The production image is a single **nginx** container: it serves the built app and a same-origin **CORS proxy** at `/git-cors/` that forwards to any Git HTTPS host (GitHub, GitLab, Gitea, self-hosted, …).
+The production image is a single **nginx** container: it serves the built app and a same-origin **CORS proxy** at `/git-cors/` that forwards to any Git HTTP or HTTPS host (GitHub, GitLab, Gitea, self-hosted, …).
 
 ```bash
 cp .env.example .env   # optional: set PROD_PORT (default 55112)

@@ -6,4 +6,6 @@ services:
     container_name: git_notes_client_web
     ports:
       - '${PROD_PORT:-55112}:80'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     restart: unless-stopped

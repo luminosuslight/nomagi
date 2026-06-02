@@ -7,6 +7,7 @@ import { errorMessage, reportError } from '@/lib/errors'
 import { confirmDialog } from '@/composables/useConfirmDialog'
 import { isMissingGitObjectError } from '@/lib/gitRecovery'
 import { notesMergeDriver } from '@/lib/notesMergeDriver'
+import { corsProxyForRepo, loadCorsProxySetting } from '@/lib/gitCorsProxy'
 import { resolveNewNoteFilename, type ResolveNewNoteOptions } from '@/lib/noteFilenames'
 
 export class RepositoryRepairCancelledError extends Error {
@@ -46,14 +47,10 @@ const fs = new LightningFS(FS_NAME)
 const pfs = fs.promises
 
 function loadSettings(): GitSettings {
-  const storedProxy = localStorage.getItem('corsProxy')
-  const corsProxy =
-    !storedProxy || storedProxy === 'https://cors.isomorphic-git.org' ? '/git-cors' : storedProxy
-
   return {
     repoUrl: localStorage.getItem('repoUrl') ?? '',
     token: localStorage.getItem('token') ?? '',
-    corsProxy,
+    corsProxy: loadCorsProxySetting(localStorage.getItem('corsProxy')),
     author: {
       name: localStorage.getItem('authorName') ?? 'Notes',
       email: localStorage.getItem('authorEmail') ?? 'notes@local',
@@ -134,22 +131,18 @@ function auth(settings: GitSettings) {
   }
 }
 
-function corsProxy(settings: GitSettings) {
-  return settings.corsProxy.trim() || undefined
-}
-
 function isPushNotFastForward(err: unknown): boolean {
   return err instanceof Errors.PushRejectedError && err.data.reason === 'not-fast-forward'
 }
 
-function remoteGitOptions() {
+function remoteGitOptions(gitSettings: GitSettings, repoUrl = gitSettings.repoUrl.trim()) {
   return {
     fs,
     http,
     dir: REPO_DIR,
-    corsProxy: corsProxy(settings),
-    headers: authHeaders(settings),
-    onAuth: auth(settings),
+    corsProxy: corsProxyForRepo(gitSettings.corsProxy, repoUrl),
+    headers: authHeaders(gitSettings),
+    onAuth: auth(gitSettings),
     singleBranch: true as const,
   }
 }
@@ -242,7 +235,7 @@ async function resolveHeadOid(): Promise<string> {
 
 async function deepenShallowHistory(): Promise<void> {
   await git.fetch({
-    ...remoteGitOptions(),
+    ...remoteGitOptions(settings),
     depth: RECOVERY_HISTORY_DEPTH,
   })
 }
@@ -268,7 +261,7 @@ async function recloneWithRecoveryDepth(): Promise<void> {
     await rmRecursive(REPO_DIR)
   })
   await git.clone({
-    ...remoteGitOptions(),
+    ...remoteGitOptions(settings),
     url: repoUrl,
     depth: RECOVERY_HISTORY_DEPTH,
   })
@@ -379,7 +372,7 @@ export function useGit() {
       await withGitLock(async () => {
         await withStorageErrors(async () => {
           await git.clone({
-            ...remoteGitOptions(),
+            ...remoteGitOptions(settings),
             url: settings.repoUrl.trim(),
             depth: INITIAL_CLONE_DEPTH,
           })
@@ -399,7 +392,7 @@ export function useGit() {
       const branch = await git.currentBranch({ fs, dir: REPO_DIR })
       if (!branch) throw new Error('No current branch')
 
-      const { fetchHead } = await git.fetch(remoteGitOptions())
+      const { fetchHead } = await git.fetch(remoteGitOptions(settings))
 
       if (!fetchHead) return
 
@@ -431,7 +424,7 @@ export function useGit() {
         fs,
         http,
         dir: REPO_DIR,
-        corsProxy: corsProxy(settings),
+        corsProxy: corsProxyForRepo(settings.corsProxy, settings.repoUrl),
         headers: authHeaders(settings),
         onAuth: auth(settings),
       })
