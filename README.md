@@ -50,6 +50,27 @@ A whiteboard/canvas may come later via Obsidian's open [`jsoncanvas`](https://js
 
 A public test instance is available at [notes.luminosus.org](https://notes.luminosus.org). Use it to try the app without hosting anything yourself. It is **not** intended for production or long-term use — the server may be **shut down at any time**. For anything you care about, self-host or find a public instance. The included CORS proxy can see your notes during transit for technical reasons, see below. This means you have to trust it in the same way you might trust the git provider or any other cloud backend like Notion. Your data is never stored on the test server, only in git.
 
+## Fully private notes (local Gitea)
+
+You can keep notes **entirely on your device** while still using a public Nomagi instance (e.g. [notes.luminosus.org](https://notes.luminosus.org)) or someone else’s hosted app. Nomagi is only static files in the browser; sync talks **directly** from your browser to Gitea on your machine. Notes, tokens, and git traffic **never** go through the Nomagi server, and **no CORS proxy is used or needed**.
+
+1. Run Gitea locally — see [`local_gitea_instance/`](local_gitea_instance/) for a ready-made Docker Compose setup with browser CORS already configured.
+2. Set up Gitea:
+   - Open **http://localhost:55001**
+   - Complete the install wizard — create your admin account
+   - **+ → New Repository** — name it `notes` (or whatever you prefer); don’t initialize with a README
+   - **Settings → Applications → Generate New Token** — scope: `write:repository`
+3. In Nomagi **Settings**:
+   - **Repository URL:** `http://localhost:55001/USER/notes.git` (replace `USER` and repo name; use your port if different). Do **not** embed username or token in the URL.
+   - **Personal Access Token:** your Gitea token.
+   - **Git CORS Proxy:** leave **empty**.
+
+Gitea must allow CORS from the origin where you open Nomagi (e.g. `https://notes.luminosus.org`). The example in `local_gitea_instance/` sets this in `.env`. CORS checks the **Nomagi page origin**, not your location — so the same direct-browser-to-Gitea flow works from any device, as long as Gitea allows that origin.
+
+### Your own Gitea on the internet
+
+The same setup extends to a Gitea instance you expose on the internet. Use your public clone URL in **Repository URL** (e.g. `https://gitea.example.com/USER/notes.git`), leave **Git CORS Proxy** empty, and configure CORS as in [`local_gitea_instance/`](local_gitea_instance/). The browser still talks directly to Gitea — no proxy. Hardening the server (HTTPS, access control, updates, etc.) is up to you.
+
 ## Self-hosting
 
 The production image is a single **nginx** container: it serves the built app and a same-origin **CORS proxy** at `/git-cors/` that forwards to any Git HTTP or HTTPS host (GitHub, GitLab, Gitea, self-hosted, …).
