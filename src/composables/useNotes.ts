@@ -15,7 +15,8 @@ const SYNC_SKIP_EDIT_MS = 2_000
  *
  * Commit: debounce (COMMIT_DEBOUNCE_MS) → persistIfDirty → writeFile + commit.
  * Amend within COMMIT_AMEND_WINDOW_MS if HEAD is unpushed (useGit).
- * flush() on file switch / tab hide; openFile commits previous file when switching.
+ * flush() on file switch / tab hide; openFile commits previous file when switching
+ * (only if userEdited — Milkdown normalization alone does not count).
  *
  * Sync: push first; fetch + merge only when push is rejected (non-fast-forward).
  * On file leave (switch / mobile back) queues background sync when there were
@@ -36,6 +37,8 @@ export function useNotes() {
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
   let skipSave = false
+  /** True after the user edits the open note (not Milkdown parse/normalize on load). */
+  let userEdited = false
   const lastPersistedContent = ref('')
   let lastEditAt = 0
   let backgroundSyncChain: Promise<void> = Promise.resolve()
@@ -49,7 +52,12 @@ export function useNotes() {
   }
 
   function isDirty(): boolean {
-    return !skipSave && selectedFile.value !== null && content.value !== lastPersistedContent.value
+    return (
+      userEdited &&
+      !skipSave &&
+      selectedFile.value !== null &&
+      content.value !== lastPersistedContent.value
+    )
   }
 
   function isEditingActive(): boolean {
@@ -187,7 +195,13 @@ export function useNotes() {
 
   async function openFile(filepath: string, prevFilepath: string | null = null) {
     const leavingFile = Boolean(prevFilepath && prevFilepath !== filepath)
-    const hadUnsavedEdits = leavingFile && !skipSave && content.value !== lastPersistedContent.value
+
+    if (leavingFile && !userEdited && content.value !== lastPersistedContent.value) {
+      content.value = lastPersistedContent.value
+    }
+
+    const hadUnsavedEdits =
+      leavingFile && userEdited && !skipSave && content.value !== lastPersistedContent.value
 
     if (leavingFile) {
       clearSaveTimer()
@@ -211,6 +225,7 @@ export function useNotes() {
       }
     }
 
+    userEdited = false
     isLoadingContent.value = true
     saveError.value = null
     skipSave = true
@@ -230,6 +245,8 @@ export function useNotes() {
   }
 
   watch(content, () => {
+    if (skipSave || isLoadingContent.value) return
+    userEdited = true
     lastEditAt = Date.now()
     scheduleCommit()
   })
@@ -248,6 +265,7 @@ export function useNotes() {
   async function deleteFile(filepath: string) {
     if (selectedFile.value === filepath) {
       clearSaveTimer()
+      userEdited = false
       skipSave = true
       selectedFile.value = null
       content.value = ''

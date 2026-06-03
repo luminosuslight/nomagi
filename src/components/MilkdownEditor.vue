@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { editorViewCtx } from '@milkdown/core'
-import { inject, markRaw, provide, ref, shallowRef, watch } from 'vue'
+import { inject, markRaw, onUnmounted, provide, ref, shallowRef, watch } from 'vue'
 import { Milkdown, useEditor } from '@milkdown/vue'
 import { Crepe } from '@milkdown/crepe'
 import { replaceAll } from '@milkdown/kit/utils'
@@ -39,6 +39,17 @@ const localOverlayRoot = ref<HTMLElement | null>(null)
 const overlayRoot = parentOverlayRoot ?? localOverlayRoot
 const drawingEditing = inject(drawingEditingKey, ref(false))
 let lastUserChange = 0
+/** When false, markdownUpdated is ignored so parse/normalize does not dirty the note. */
+let syncToParent = false
+const isUnmounted = ref(false)
+
+onUnmounted(() => {
+  isUnmounted.value = true
+})
+
+function enableParentSync() {
+  syncToParent = true
+}
 
 if (!parentOverlayRoot) {
   provide(editorOverlayRootKey, localOverlayRoot)
@@ -77,7 +88,11 @@ const { loading } = useEditor((root) => {
     .use(listOutdentBackspacePlugin)
 
   crepe.on((listener) => {
+    listener.focus(() => {
+      enableParentSync()
+    })
     listener.markdownUpdated((_ctx, markdown) => {
+      if (!syncToParent || isUnmounted.value) return
       lastUserChange = Date.now()
       emit('update:modelValue', markdown)
     })
@@ -118,6 +133,7 @@ function blurProseMirror() {
 }
 
 watch(drawingEditing, (editing) => {
+  if (editing) enableParentSync()
   syncEditorReadonly()
   if (editing) blurProseMirror()
 })

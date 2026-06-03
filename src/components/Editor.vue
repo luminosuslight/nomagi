@@ -31,6 +31,8 @@ const editorPanel = ref<HTMLElement | null>(null)
 const drawingEditing = ref(false)
 const editorMode = ref<EditorMode>('wysiwyg')
 const milkdownEditorRef = ref<InstanceType<typeof MilkdownEditor> | null>(null)
+/** Milkdown pushed at least one user-driven update for the open file. */
+const wysiwygUserEdited = ref(false)
 
 provide(editorOverlayRootKey, editorPanel)
 provide(drawingEditingKey, drawingEditing)
@@ -39,12 +41,18 @@ watch(
   () => props.filename,
   () => {
     editorMode.value = 'wysiwyg'
+    wysiwygUserEdited.value = false
   },
 )
 
+function onWysiwygUpdate(value: string) {
+  wysiwygUserEdited.value = true
+  emit('update:modelValue', value)
+}
+
 function setEditorMode(mode: EditorMode) {
   if (mode === editorMode.value || !props.filename) return
-  if (mode === 'code' && editorMode.value === 'wysiwyg') {
+  if (mode === 'code' && editorMode.value === 'wysiwyg' && wysiwygUserEdited.value) {
     const markdown = milkdownEditorRef.value?.getMarkdown()
     if (markdown !== undefined) {
       emit('update:modelValue', markdown)
@@ -164,7 +172,7 @@ function setEditorMode(mode: EditorMode) {
           :key="`${filename}-wysiwyg`"
           :model-value="modelValue"
           placeholder="Start writing…"
-          @update:model-value="$emit('update:modelValue', $event)"
+          @update:model-value="onWysiwygUpdate"
         />
       </MilkdownProvider>
     </div>
