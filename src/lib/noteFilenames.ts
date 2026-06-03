@@ -1,3 +1,5 @@
+import { noteBasename } from '@/lib/noteDisplay'
+
 export const QUICK_NOTES_DIR = 'quick_notes'
 
 export function normalizeMarkdownFilename(name: string): string {
@@ -81,4 +83,38 @@ export function resolveNewNoteFilename(
   }
 
   return joinFolderPath(folder, normalizeMarkdownFilename(trimmed))
+}
+
+function uniqueBasenameInFolder(basename: string, existingBasenames: string[]): string {
+  if (!existingBasenames.includes(basename)) return basename
+
+  const stem = basename.replace(/\.md$/, '')
+  let suffix = 2
+  while (true) {
+    const candidate = `${stem}-${suffix}.md`
+    if (!existingBasenames.includes(candidate)) return candidate
+    suffix++
+  }
+}
+
+/** Target path when moving a note into `targetFolder` (empty = root / quick note rules). */
+export function resolveMoveNotePath(
+  sourcePath: string,
+  targetFolder: string,
+  existingFiles: string[],
+): string {
+  const folder = targetFolder.trim()
+  if (folder.includes('/') || folder.includes('\\')) {
+    throw new Error('Folder must not contain path separators')
+  }
+
+  const basename = noteBasename(sourcePath)
+  const targetPath = folder ? joinFolderPath(folder, basename) : basename
+
+  const others = existingFiles.filter((path) => path !== sourcePath)
+  if (!others.includes(targetPath)) return targetPath
+
+  const uniqueBasename = uniqueBasenameInFolder(basename, existingBasenamesInFolder(others, folder))
+
+  return folder ? joinFolderPath(folder, uniqueBasename) : uniqueBasename
 }

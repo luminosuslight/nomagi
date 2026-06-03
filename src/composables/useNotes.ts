@@ -262,6 +262,22 @@ export function useNotes() {
     return filename
   }
 
+  async function moveFile(filepath: string, targetFolder: string) {
+    await flush()
+    const newPath = await git.moveFile(filepath, targetFolder, content.value)
+
+    skipSave = true
+    if (selectedFile.value === filepath) {
+      selectedFile.value = newPath
+      lastPersistedContent.value = content.value
+    }
+    skipSave = false
+
+    await refreshFiles({ silent: true })
+    queueBackgroundSync({ reload: false })
+    return newPath
+  }
+
   async function deleteFile(filepath: string) {
     if (selectedFile.value === filepath) {
       clearSaveTimer()
@@ -312,6 +328,7 @@ export function useNotes() {
     leaveCurrentFile,
     syncNotes,
     createFile,
+    moveFile,
     deleteFile,
   }
 }

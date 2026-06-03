@@ -3,6 +3,12 @@ export const ROOT_FOLDER_VALUE = ''
 
 export const ROOT_FOLDER_LABEL = 'No Folder / Quick Note'
 
+/** Parent folder path, or empty string for notes at the repo root. */
+export function noteParentFolder(filepath: string): string {
+  const slash = filepath.lastIndexOf('/')
+  return slash === -1 ? '' : filepath.slice(0, slash)
+}
+
 export function listFoldersFromFiles(files: string[]): string[] {
   const folders = new Set<string>()
 

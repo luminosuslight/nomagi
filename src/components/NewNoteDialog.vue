@@ -4,11 +4,12 @@ import Dialog from '@/components/ui/Dialog.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
-import { ROOT_FOLDER_LABEL, ROOT_FOLDER_VALUE } from '@/lib/noteFolders'
+import NoteFolderSelect from '@/components/NoteFolderSelect.vue'
+import { ROOT_FOLDER_VALUE } from '@/lib/noteFolders'
 
 const open = defineModel<boolean>({ default: false })
 
-const props = defineProps<{
+defineProps<{
   folders: string[]
   isBusy: boolean
 }>()
@@ -20,11 +21,6 @@ const emit = defineEmits<{
 const folder = ref(ROOT_FOLDER_VALUE)
 const name = ref('')
 const nameInputRef = ref<InstanceType<typeof Input> | null>(null)
-
-const folderOptions = computed(() => [
-  { value: ROOT_FOLDER_VALUE, label: ROOT_FOLDER_LABEL },
-  ...props.folders.map((path) => ({ value: path, label: path })),
-])
 
 const isQuickNote = computed(() => folder.value === ROOT_FOLDER_VALUE && !name.value.trim())
 
@@ -57,23 +53,12 @@ function onSubmit() {
       class="grid gap-4"
       @submit.prevent="onSubmit"
     >
-      <div class="grid gap-2">
-        <Label for="new-note-folder">Folder</Label>
-        <select
-          id="new-note-folder"
-          v-model="folder"
-          class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          :disabled="isBusy"
-        >
-          <option
-            v-for="option in folderOptions"
-            :key="option.value || 'root'"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-      </div>
+      <NoteFolderSelect
+        id="new-note-folder"
+        v-model="folder"
+        :folders="folders"
+        :disabled="isBusy"
+      />
       <div class="grid gap-2">
         <Label for="new-note-name">Filename</Label>
         <Input

@@ -8,7 +8,11 @@ import { confirmDialog } from '@/composables/useConfirmDialog'
 import { isMissingGitObjectError } from '@/lib/gitRecovery'
 import { notesMergeDriver } from '@/lib/notesMergeDriver'
 import { corsProxyForRepo, loadCorsProxySetting } from '@/lib/gitCorsProxy'
-import { resolveNewNoteFilename, type ResolveNewNoteOptions } from '@/lib/noteFilenames'
+import {
+  resolveMoveNotePath,
+  resolveNewNoteFilename,
+  type ResolveNewNoteOptions,
+} from '@/lib/noteFilenames'
 
 export class RepositoryRepairCancelledError extends Error {
   constructor() {
@@ -540,6 +544,42 @@ export function useGit() {
     return filename
   }
 
+  async function moveFile(filepath: string, targetFolder: string, content?: string) {
+    return withGitLock(async () => {
+      const existing = await listMarkdownFiles()
+      const newPath = resolveMoveNotePath(filepath, targetFolder, existing)
+      if (newPath === filepath) {
+        throw new Error('Note is already in that folder')
+      }
+
+      const fileContent = content ?? (await readFile(filepath))
+
+      await withStorageErrors(async () => {
+        await ensureParentDirs(newPath)
+        await pfs.writeFile(`${REPO_DIR}/${newPath}`, fileContent, 'utf8')
+        await pfs.unlink(`${REPO_DIR}/${filepath}`)
+      })
+
+      let amended = false
+      await withMissingObjectRecovery(async () => {
+        await git.updateIndex({ fs, dir: REPO_DIR, filepath, remove: true })
+        await git.add({ fs, dir: REPO_DIR, filepath: newPath })
+        amended = await shouldAmendCommit()
+        await git.commit({
+          fs,
+          dir: REPO_DIR,
+          message: `move ${filepath} to ${newPath}`,
+          author: settings.author,
+          amend: amended,
+        })
+      })
+      await refreshCommitState()
+      console.log(amended ? `[git] amended commit: ${newPath}` : `[git] commit: ${newPath}`)
+      await notifyAfterCommit()
+      return newPath
+    })
+  }
+
   async function deleteFile(filepath: string) {
     await withGitLock(async () => {
       await withStorageErrors(async () => {
@@ -587,6 +627,7 @@ export function useGit() {
     readFile,
     writeFile,
     createFile,
+    moveFile,
     deleteFile,
     onAfterCommit,
   }

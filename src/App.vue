@@ -20,6 +20,7 @@ import SidebarViewTabs, { type SidebarView } from '@/components/SidebarViewTabs.
 import Editor from '@/components/Editor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import NewNoteDialog from '@/components/NewNoteDialog.vue'
+import MoveNoteDialog from '@/components/MoveNoteDialog.vue'
 import { listFoldersFromFiles } from '@/lib/noteFolders'
 import SyncButton from '@/components/SyncButton.vue'
 import ConfirmAlertDialog from '@/components/ui/ConfirmAlertDialog.vue'
@@ -59,12 +60,14 @@ const {
   leaveCurrentFile,
   refreshFiles,
   createFile,
+  moveFile,
   deleteFile,
   readFile,
 } = useNotes()
 
 const settingsOpen = ref(false)
 const newNoteOpen = ref(false)
+const moveNoteOpen = ref(false)
 
 const noteFolders = computed(() => listFoldersFromFiles(files.value))
 const sidebarView = ref<SidebarView>('recent')
@@ -162,6 +165,22 @@ async function handleDelete(filepath: string) {
 
 function handleEditorDelete() {
   if (selectedFile.value) void handleDelete(selectedFile.value)
+}
+
+function handleEditorMove() {
+  if (!selectedFile.value || isBusy.value) return
+  moveNoteOpen.value = true
+}
+
+async function handleMoveNote(payload: { folder: string }) {
+  if (!selectedFile.value) return
+  try {
+    const newPath = await moveFile(selectedFile.value, payload.folder)
+    toast.success(`Moved to ${newPath}`)
+  } catch (err) {
+    reportError('moveFile', err)
+    toast.error(errorMessage(err))
+  }
 }
 
 function handleOnline() {
@@ -297,8 +316,10 @@ onUnmounted(() => {
         :show-back="mobileView === 'editor'"
         :can-create-note="isCloned && !isBusy"
         :delete-disabled="isBusy || !selectedFile"
+        :move-disabled="isBusy || !selectedFile"
         @back="handleEditorBack"
         @new-note="handleNewFile"
+        @move="handleEditorMove"
         @delete="handleEditorDelete"
       />
     </main>
@@ -318,6 +339,14 @@ onUnmounted(() => {
       :folders="noteFolders"
       :is-busy="isBusy"
       @create="handleCreateNote"
+    />
+
+    <MoveNoteDialog
+      v-model="moveNoteOpen"
+      :filepath="selectedFile"
+      :folders="noteFolders"
+      :is-busy="isBusy"
+      @move="handleMoveNote"
     />
   </div>
 

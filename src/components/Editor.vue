@@ -16,12 +16,14 @@ const props = defineProps<{
   showBack?: boolean
   canCreateNote?: boolean
   deleteDisabled?: boolean
+  moveDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   back: []
   newNote: []
+  move: []
   delete: []
 }>()
 
@@ -122,6 +124,17 @@ function setEditorMode(mode: EditorMode) {
           <Code2 class="size-4" />
         </Button>
       </div>
+      <Button
+        v-if="filename"
+        type="button"
+        variant="outline"
+        size="sm"
+        class="shrink-0"
+        :disabled="moveDisabled"
+        @click="$emit('move')"
+      >
+        Move
+      </Button>
       <Button
         v-if="filename"
         type="button"
