@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import Dialog from '@/components/ui/Dialog.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
@@ -19,6 +19,7 @@ const emit = defineEmits<{
 
 const folder = ref(ROOT_FOLDER_VALUE)
 const name = ref('')
+const nameInputRef = ref<InstanceType<typeof Input> | null>(null)
 
 const folderOptions = computed(() => [
   { value: ROOT_FOLDER_VALUE, label: ROOT_FOLDER_LABEL },
@@ -29,10 +30,12 @@ const isQuickNote = computed(() => folder.value === ROOT_FOLDER_VALUE && !name.v
 
 const submitLabel = computed(() => (isQuickNote.value ? 'Quick Note' : 'Create'))
 
-watch(open, (isOpen) => {
+watch(open, async (isOpen) => {
   if (!isOpen) return
   folder.value = ROOT_FOLDER_VALUE
   name.value = ''
+  await nextTick()
+  ;(nameInputRef.value?.$el as HTMLInputElement | undefined)?.focus()
 })
 
 function onSubmit() {
@@ -75,6 +78,7 @@ function onSubmit() {
         <Label for="new-note-name">Filename</Label>
         <Input
           id="new-note-name"
+          ref="nameInputRef"
           v-model="name"
           type="text"
           placeholder="Optional"
