@@ -110,7 +110,7 @@ export function useNotes() {
     if (!git.isCloned.value || !navigator.onLine) return
 
     await git.sync()
-    await refreshFiles()
+    await refreshFiles({ silent: true })
     if (options.reload !== false) {
       await reloadCurrentFileIfClean()
     }
@@ -161,14 +161,15 @@ export function useNotes() {
     )
   }
 
-  async function refreshFiles() {
+  async function refreshFiles(options: { silent?: boolean } = {}) {
     if (!git.isCloned.value) {
       files.value = []
       recentNotes.value = []
       return
     }
 
-    isLoadingFiles.value = true
+    const showLoading = !options.silent && files.value.length === 0
+    if (showLoading) isLoadingFiles.value = true
     try {
       files.value = await git.listMarkdownFiles()
       await refreshRecentNotes()
@@ -176,7 +177,7 @@ export function useNotes() {
         selectedFile.value = null
       }
     } finally {
-      isLoadingFiles.value = false
+      if (showLoading) isLoadingFiles.value = false
     }
   }
 
@@ -257,7 +258,7 @@ export function useNotes() {
     try {
       await git.deleteFile(filepath)
     } finally {
-      await refreshFiles()
+      await refreshFiles({ silent: true })
     }
     queueBackgroundSync({ reload: false })
   }
