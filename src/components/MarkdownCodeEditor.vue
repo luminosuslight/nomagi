@@ -8,6 +8,7 @@ import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { basicSetup } from 'codemirror'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { scheduleFoldFigureElements } from '@/lib/markdownCodeEditor/foldFigureElements'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<{
@@ -80,6 +81,7 @@ function createEditor(parent: HTMLElement) {
     }),
     parent,
   })
+  scheduleFoldFigureElements(view)
 }
 
 function syncEditable() {
@@ -96,6 +98,7 @@ function syncDocument(value: string) {
   view.dispatch({
     changes: { from: 0, to: current.length, insert: value },
   })
+  scheduleFoldFigureElements(view)
 }
 
 onMounted(() => {
