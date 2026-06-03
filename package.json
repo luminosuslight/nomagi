@@ -34,6 +34,7 @@
     ]
   },
   "dependencies": {
+    "@fsegurai/codemirror-theme-basic-light": "^6.2.5",
     "@isomorphic-git/lightning-fs": "^4.6.2",
     "@js-draw/material-icons": "^1.33.0",
     "@milkdown/crepe": "^7.21.1",

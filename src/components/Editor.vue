@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { provide, ref } from 'vue'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-vue-next'
+import { provide, ref, watch } from 'vue'
+import { ArrowLeft, Code2, PenLine, Plus, Trash2 } from 'lucide-vue-next'
 import { MilkdownProvider } from '@milkdown/vue'
+import MarkdownCodeEditor from '@/components/MarkdownCodeEditor.vue'
 import MilkdownEditor from '@/components/MilkdownEditor.vue'
 import Button from '@/components/ui/Button.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import { drawingEditingKey, editorOverlayRootKey } from '@/lib/editorOverlay'
 import { cn } from '@/lib/utils'
 
-defineProps<{
+const props = defineProps<{
   filename: string | null
   modelValue: string
   isLoading: boolean
@@ -17,18 +18,40 @@ defineProps<{
   deleteDisabled?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: string]
   back: []
   newNote: []
   delete: []
 }>()
 
+type EditorMode = 'wysiwyg' | 'code'
+
 const editorPanel = ref<HTMLElement | null>(null)
 const drawingEditing = ref(false)
+const editorMode = ref<EditorMode>('wysiwyg')
+const milkdownEditorRef = ref<InstanceType<typeof MilkdownEditor> | null>(null)
 
 provide(editorOverlayRootKey, editorPanel)
 provide(drawingEditingKey, drawingEditing)
+
+watch(
+  () => props.filename,
+  () => {
+    editorMode.value = 'wysiwyg'
+  },
+)
+
+function setEditorMode(mode: EditorMode) {
+  if (mode === editorMode.value || !props.filename) return
+  if (mode === 'code' && editorMode.value === 'wysiwyg') {
+    const markdown = milkdownEditorRef.value?.getMarkdown()
+    if (markdown !== undefined) {
+      emit('update:modelValue', markdown)
+    }
+  }
+  editorMode.value = mode
+}
 </script>
 
 <template>
@@ -58,6 +81,39 @@ provide(drawingEditingKey, drawingEditing)
       <h2 class="min-w-0 flex-1 truncate text-sm font-medium">
         {{ filename ?? 'Select a note' }}
       </h2>
+      <div
+        v-if="filename"
+        class="flex shrink-0 items-center rounded-md border p-0.5"
+        role="group"
+        aria-label="Editor mode"
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          class="h-7 px-2"
+          :class="editorMode === 'wysiwyg' && 'bg-accent text-accent-foreground'"
+          aria-label="Visual editor"
+          :aria-pressed="editorMode === 'wysiwyg'"
+          :disabled="drawingEditing"
+          @click="setEditorMode('wysiwyg')"
+        >
+          <PenLine class="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          class="h-7 px-2"
+          :class="editorMode === 'code' && 'bg-accent text-accent-foreground'"
+          aria-label="Markdown source"
+          :aria-pressed="editorMode === 'code'"
+          :disabled="drawingEditing"
+          @click="setEditorMode('code')"
+        >
+          <Code2 class="size-4" />
+        </Button>
+      </div>
       <Button
         v-if="filename"
         type="button"
@@ -96,9 +152,16 @@ provide(drawingEditingKey, drawingEditing)
           New note
         </Button>
       </div>
+      <MarkdownCodeEditor
+        v-else-if="editorMode === 'code'"
+        :key="`${filename}-code`"
+        :model-value="modelValue"
+        @update:model-value="$emit('update:modelValue', $event)"
+      />
       <MilkdownProvider v-else>
         <MilkdownEditor
-          :key="filename"
+          ref="milkdownEditorRef"
+          :key="`${filename}-wysiwyg`"
           :model-value="modelValue"
           placeholder="Start writing…"
           @update:model-value="$emit('update:modelValue', $event)"

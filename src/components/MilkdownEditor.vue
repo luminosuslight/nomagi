@@ -119,6 +119,12 @@ watch(drawingEditing, (editing) => {
 })
 
 watch(() => props.disabled, syncEditorReadonly)
+
+function getMarkdown() {
+  return crepeRef.value?.getMarkdown() ?? props.modelValue
+}
+
+defineExpose({ getMarkdown })
 </script>
 
 <template>
