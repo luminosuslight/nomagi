@@ -28,7 +28,12 @@ describe('stripMarkdownForPreview', () => {
       '<figure data-type="drawing">x</figure>',
     ].join('\n')
 
-    expect(stripMarkdownForPreview(input)).toBe('Title\n• item\nbold text')
+    expect(stripMarkdownForPreview(input)).toBe('**Title**\n• item\nbold text')
+  })
+
+  it('wraps heading text in bold markers', () => {
+    expect(stripMarkdownForPreview('## Section')).toBe('**Section**')
+    expect(stripMarkdownForPreview('  ### Nested  ###  ')).toBe('**Nested**')
   })
 
   it('replaces task checkboxes with unicode symbols', () => {
@@ -64,10 +69,10 @@ describe('previewFromContent', () => {
   })
 
   it('strips markdown in excerpt', () => {
-    expect(previewFromContent('# Hello\n**world**')).toBe('Hello\nworld')
+    expect(previewFromContent('# Hello\n**world**')).toBe('**Hello**\nworld')
   })
 
   it('removes empty lines from preview', () => {
-    expect(previewFromContent('# Title\n\n\nBody')).toBe('Title\nBody')
+    expect(previewFromContent('# Title\n\n\nBody')).toBe('**Title**\nBody')
   })
 })

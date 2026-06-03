@@ -33,9 +33,13 @@ function stripHtmlForPreview(text: string): string {
     .replace(/<[^>]+>/g, '')
 }
 
+function stripHeadingForPreview(line: string): string | null {
+  const match = line.match(/^\s*#{1,6}\s+(.+?)(?:\s+#+\s*)?\s*$/)
+  return match ? match[1].trim() : null
+}
+
 function stripBlockMarkdownForPreview(line: string): string {
   return line
-    .replace(/^\s*#{1,6}\s+/, '')
     .replace(/^\s*>\s*/, '')
     .replace(new RegExp(`^\\s*${LIST_MARKER}\\s+\\[\\s*\\]\\s+`), '☐ ')
     .replace(new RegExp(`^\\s*${LIST_MARKER}\\s+\\[[xX]\\]\\s+`), '☑ ')
@@ -55,10 +59,44 @@ function stripInlineMarkdownForPreview(line: string): string {
     .replace(/`([^`]+)`/g, '$1')
 }
 
+export type PreviewSegment = { text: string; bold: boolean }
+
+export function previewLineSegments(line: string): PreviewSegment[] {
+  const segments: PreviewSegment[] = []
+  const boldPattern = /\*\*(.+?)\*\*/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = boldPattern.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ text: line.slice(lastIndex, match.index), bold: false })
+    }
+    segments.push({ text: match[1], bold: true })
+    lastIndex = match.index + match[0].length
+  }
+
+  if (lastIndex < line.length) {
+    segments.push({ text: line.slice(lastIndex), bold: false })
+  }
+
+  if (segments.length === 0) {
+    segments.push({ text: line, bold: false })
+  }
+
+  return segments
+}
+
 export function stripMarkdownForPreview(text: string): string {
   const lines = stripHtmlForPreview(text)
     .split('\n')
-    .map((line) => stripInlineMarkdownForPreview(stripBlockMarkdownForPreview(line)))
+    .map((line) => {
+      const headingText = stripHeadingForPreview(line)
+      if (headingText !== null) {
+        const plain = stripInlineMarkdownForPreview(headingText)
+        return plain ? `**${plain}**` : ''
+      }
+      return stripInlineMarkdownForPreview(stripBlockMarkdownForPreview(line))
+    })
     .filter((line) => line.length > 0)
 
   return lines.join('\n').trim()

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
-import { listDisplayName } from '@/lib/noteDisplay'
+import { listDisplayName, previewLineSegments } from '@/lib/noteDisplay'
 import Card from '@/components/ui/card/Card.vue'
 import ScrollArea from '@/components/ui/ScrollArea.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
@@ -69,8 +69,23 @@ const emit = defineEmits<{
                 {{ item.headerRight }}
               </span>
             </div>
-            <p class="line-clamp-5 whitespace-pre-wrap p-3 text-sm leading-snug text-foreground/75">
-              {{ item.preview }}
+            <p class="line-clamp-5 p-3 text-sm leading-snug text-foreground/75">
+              <span
+                v-for="(line, lineIndex) in item.preview.split('\n')"
+                :key="lineIndex"
+                class="block"
+              >
+                <template
+                  v-for="(segment, segmentIndex) in previewLineSegments(line)"
+                  :key="segmentIndex"
+                >
+                  <span
+                    v-if="segment.bold"
+                    class="font-semibold"
+                  >{{ segment.text }}</span>
+                  <template v-else>{{ segment.text }}</template>
+                </template>
+              </span>
             </p>
           </Card>
         </button>
