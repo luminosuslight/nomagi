@@ -16,6 +16,7 @@ import {
 } from '@/lib/milkdown/drawing'
 import { jsDrawRemark, jsDrawSchema, jsDrawView } from '@/lib/milkdown/jsDraw'
 import { listIndentSpaceInputRule, listOutdentBackspacePlugin } from '@/lib/milkdown/listIndent'
+import { tightBulletList, tightListItem, tightOrderedList } from '@/lib/milkdown/tightLists'
 import { cn } from '@/lib/utils'
 
 import '@milkdown/crepe/theme/common/style.css'
@@ -62,6 +63,9 @@ const { loading } = useEditor((root) => {
       ctx.set(drawingOverlayRootCtx.key, overlayRoot)
       ctx.set(drawingEditingCtx.key, drawingEditing)
     })
+    .use(tightListItem)
+    .use(tightBulletList)
+    .use(tightOrderedList)
     .use(drawingRemark)
     .use(drawingSchema)
     .use(drawingView)
