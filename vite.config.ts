@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
       vue(),
       tailwindcss(),
       VitePWA({
+        // Not `autoUpdate`: that skip-waits and reloads open tabs mid-session.
         registerType: 'prompt',
         injectRegister: false,
         manifest: {

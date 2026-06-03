@@ -1,36 +1,32 @@
-import { watch } from 'vue'
-import { toast } from 'vue-sonner'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
 
 const UPDATE_CHECK_MS = 60 * 60 * 1000
 
-let updateToastId: string | number | undefined
+/** If a deploy left a waiting worker, activate it on this navigation/reload only. */
+function activateWaitingWorkerOnLoad() {
+  if (!('serviceWorker' in navigator)) return
+
+  let refreshing = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return
+    refreshing = true
+    window.location.reload()
+  })
+
+  void navigator.serviceWorker.ready.then((registration) => {
+    registration.waiting?.postMessage({ type: 'SKIP_WAITING' })
+  })
+}
 
 export function usePwaUpdate() {
-  const { needRefresh, updateServiceWorker } = useRegisterSW({
+  activateWaitingWorkerOnLoad()
+
+  useRegisterSW({
     onRegisteredSW(_swUrl: string, registration: ServiceWorkerRegistration | undefined) {
       registration?.update()
       if (registration) {
         setInterval(() => registration.update(), UPDATE_CHECK_MS)
       }
     },
-  })
-
-  watch(needRefresh, (needs) => {
-    if (!needs || updateToastId != null) return
-
-    updateToastId = toast('Update available', {
-      description: 'A new version of Nomagi is ready.',
-      duration: Number.POSITIVE_INFINITY,
-      action: {
-        label: 'Reload',
-        onClick: () => {
-          void updateServiceWorker(true)
-        },
-      },
-      onDismiss: () => {
-        updateToastId = undefined
-      },
-    })
   })
 }
