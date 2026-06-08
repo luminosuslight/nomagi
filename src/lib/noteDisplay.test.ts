@@ -21,14 +21,31 @@ describe('listDisplayName', () => {
 
 describe('stripMarkdownForPreview', () => {
   it('strips headings, bullets, bold, and html', () => {
-    const input = [
-      '# Title',
-      '- item',
-      '**bold** text',
-      '<figure data-type="drawing">x</figure>',
-    ].join('\n')
+    const input = ['# Title', '- item', '**bold** text', '<p>removed</p>'].join('\n')
 
     expect(stripMarkdownForPreview(input)).toBe('**Title**\n• item\nbold text')
+  })
+
+  it('replaces drawing figures and svg blocks with [drawing]', () => {
+    const drawingFigure = [
+      '<figure data-type="drawing" class="sketch">',
+      '<svg viewBox="0 0 500 250" xmlns="http://www.w3.org/2000/svg">',
+      '<path d="M10 10 L20 20"></path>',
+      '</svg>',
+      '</figure>',
+    ].join('\n')
+    const jsDrawFigure = [
+      '<figure data-type="js-draw" class="js-draw-sketch">',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 250"></svg>',
+      '</figure>',
+    ].join('\n')
+    const standaloneSvg = '<svg><circle cx="5" cy="5" r="3"/></svg>'
+
+    expect(stripMarkdownForPreview(`before\n${drawingFigure}\nafter`)).toBe(
+      'before\n[drawing]\nafter',
+    )
+    expect(stripMarkdownForPreview(jsDrawFigure)).toBe('[drawing]')
+    expect(stripMarkdownForPreview(standaloneSvg)).toBe('[drawing]')
   })
 
   it('wraps heading text in bold markers', () => {
@@ -74,5 +91,17 @@ describe('previewFromContent', () => {
 
   it('removes empty lines from preview', () => {
     expect(previewFromContent('# Title\n\n\nBody')).toBe('**Title**\nBody')
+  })
+
+  it('replaces drawing html before applying length limit', () => {
+    const path = '<path d="M701,275l0,2" fill="none" stroke="#00008b" stroke-width="1"></path>'
+    const text = [
+      '<figure data-type="js-draw" class="js-draw-sketch">',
+      `<svg viewBox="0 0 500 250" xmlns="http://www.w3.org/2000/svg">${path.repeat(30)}</svg>`,
+      '</figure>',
+      'visible text after drawing',
+    ].join('\n')
+
+    expect(previewFromContent(text)).toBe('[drawing]\nvisible text after drawing')
   })
 })

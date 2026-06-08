@@ -25,9 +25,18 @@ export function listDisplayName(filepath: string): string {
   return basename.endsWith('.md') ? basename.slice(0, -3) : basename
 }
 
+const DRAWING_FIGURE_RE = /<figure\b[^>]*>[\s\S]*?<\/figure>/gi
+const SVG_BLOCK_RE = /<svg\b[^>]*>[\s\S]*?<\/svg>/gi
+
+function isDrawingFigure(html: string): boolean {
+  return /<svg\b/i.test(html) || /data-type=["'](?:drawing|js-draw)["']/i.test(html)
+}
+
 function stripHtmlForPreview(text: string): string {
   return text
     .replace(/\r\n/g, '\n')
+    .replace(DRAWING_FIGURE_RE, (match) => (isDrawingFigure(match) ? '[drawing]' : ''))
+    .replace(SVG_BLOCK_RE, '[drawing]')
     .replace(/<[^>]+\/>/g, '')
     .replace(/<[^>]+>[\s\S]*?<\/[^>]+>/gi, '')
     .replace(/<[^>]+>/g, '')
@@ -103,11 +112,10 @@ export function stripMarkdownForPreview(text: string): string {
 }
 
 export function previewFromContent(text: string): string {
-  const normalized = text.replace(/\r\n/g, '\n')
-  const fiveLines = normalized.split('\n').slice(0, 5).join('\n')
-  const oneFifty = normalized.slice(0, 150)
-  const excerpt = fiveLines.length <= oneFifty.length ? fiveLines : oneFifty
-  const plain = stripMarkdownForPreview(excerpt).trim()
+  const plain = stripMarkdownForPreview(text.replace(/\r\n/g, '\n'))
+  const fiveLines = plain.split('\n').slice(0, 5).join('\n')
+  const oneFifty = plain.slice(0, 150)
+  const excerpt = (fiveLines.length <= oneFifty.length ? fiveLines : oneFifty).trim()
 
-  return plain || 'Empty note'
+  return excerpt || 'Empty note'
 }
