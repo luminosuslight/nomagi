@@ -46,7 +46,7 @@ export function configureJsDrawPens(editor: Editor) {
     {
       factory: makePolylineBuilder,
       color: Color4.fromString('#00008b'),
-      thickness: 2,
+      thickness: 3,
     },
     { pressureSensitivity: false },
   )

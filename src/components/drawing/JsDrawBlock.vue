@@ -91,6 +91,8 @@ async function mountEditor() {
   const markup = svgMarkupValue.value.trim()
   if (markup) {
     await editor.loadFromSVG(markup)
+  } else {
+    editor.dispatchNoAnnounce(editor.image.setAutoresizeEnabled(true), false)
   }
 
   editor.focus()
