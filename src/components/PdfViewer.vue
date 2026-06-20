@@ -37,9 +37,8 @@ async function renderCurrentPage() {
   if (generation !== renderGeneration) return
 
   const unscaled = page.getViewport({ scale: 1 })
-  const padding = 16
-  const availW = Math.max(container.clientWidth - padding * 2, 1)
-  const availH = Math.max(container.clientHeight - padding * 2, 1)
+  const availW = Math.max(container.clientWidth, 1)
+  const availH = Math.max(container.clientHeight, 1)
   const fitScale = Math.min(availW / unscaled.width, availH / unscaled.height)
   const scale = fitScale * zoomLevel.value
   const pixelRatio = window.devicePixelRatio || 1
@@ -55,8 +54,8 @@ async function renderCurrentPage() {
 
   const displayW = viewport.width / pixelRatio
   const displayH = viewport.height / pixelRatio
-  const surfaceW = Math.max(container.clientWidth, displayW + padding * 2)
-  const surfaceH = Math.max(container.clientHeight, displayH + padding * 2)
+  const surfaceW = Math.max(container.clientWidth, displayW)
+  const surfaceH = Math.max(container.clientHeight, displayH)
   scrollSurfaceStyle.value = {
     width: `${surfaceW}px`,
     minWidth: `${surfaceW}px`,
@@ -287,7 +286,7 @@ onUnmounted(() => {
       </p>
       <div
         v-else
-        class="box-border grid touch-pan-x touch-pan-y place-items-center p-4"
+        class="box-border grid touch-pan-x touch-pan-y place-items-center"
         :style="scrollSurfaceStyle"
       >
         <canvas
