@@ -13,6 +13,7 @@ import {
   resolveNewNoteFilename,
   type ResolveNewNoteOptions,
 } from '@/lib/noteFilenames'
+import { isNoteFile, isPdfFile } from '@/lib/fileTypes'
 
 export class RepositoryRepairCancelledError extends Error {
   constructor() {
@@ -167,7 +168,7 @@ async function ensureParentDirs(filepath: string): Promise<void> {
   }
 }
 
-async function collectMarkdownFiles(dir: string, prefix: string): Promise<string[]> {
+async function collectNoteFiles(dir: string, prefix: string): Promise<string[]> {
   const entries = await pfs.readdir(dir)
   const files: string[] = []
 
@@ -176,11 +177,11 @@ async function collectMarkdownFiles(dir: string, prefix: string): Promise<string
     const fullPath = `${dir}/${name}`
     const stat = await pfs.stat(fullPath)
     if (stat.isDirectory()) {
-      const nested = await collectMarkdownFiles(fullPath, prefix ? `${prefix}/${name}` : name)
+      const nested = await collectNoteFiles(fullPath, prefix ? `${prefix}/${name}` : name)
       files.push(...nested)
       continue
     }
-    if (!name.endsWith('.md')) continue
+    if (!isNoteFile(name)) continue
     files.push(prefix ? `${prefix}/${name}` : name)
   }
 
@@ -486,13 +487,13 @@ export function useGit() {
     await notifyAfterCommit()
   }
 
-  async function listMarkdownFiles(): Promise<string[]> {
-    const files = await collectMarkdownFiles(REPO_DIR, '')
+  async function listFiles(): Promise<string[]> {
+    const files = await collectNoteFiles(REPO_DIR, '')
     return files.sort()
   }
 
   async function listRecentNotes(): Promise<RecentNote[]> {
-    const names = await listMarkdownFiles()
+    const names = await listFiles()
     const withDates = await Promise.all(
       names.map(async (filepath) => {
         try {
@@ -518,6 +519,11 @@ export function useGit() {
     return pfs.readFile(`${REPO_DIR}/${filepath}`, 'utf8')
   }
 
+  async function readFileBinary(filepath: string): Promise<Uint8Array> {
+    const data = await pfs.readFile(`${REPO_DIR}/${filepath}`)
+    return data instanceof Uint8Array ? data : new Uint8Array(data)
+  }
+
   /** Write file to disk, then commit (amending if within the coalesce window and unpushed). */
   async function writeFile(filepath: string, content: string) {
     await withGitLock(async () => {
@@ -530,7 +536,7 @@ export function useGit() {
   }
 
   async function createFile(options?: ResolveNewNoteOptions, content = '') {
-    const existing = await listMarkdownFiles()
+    const existing = await listFiles()
     const filename = resolveNewNoteFilename(options, existing)
 
     try {
@@ -546,17 +552,22 @@ export function useGit() {
 
   async function moveFile(filepath: string, targetFolder: string, content?: string) {
     return withGitLock(async () => {
-      const existing = await listMarkdownFiles()
+      const existing = await listFiles()
       const newPath = resolveMoveNotePath(filepath, targetFolder, existing)
       if (newPath === filepath) {
         throw new Error('Note is already in that folder')
       }
 
-      const fileContent = content ?? (await readFile(filepath))
+      const fileContent = content ?? (isPdfFile(filepath) ? null : await readFile(filepath))
 
       await withStorageErrors(async () => {
         await ensureParentDirs(newPath)
-        await pfs.writeFile(`${REPO_DIR}/${newPath}`, fileContent, 'utf8')
+        if (isPdfFile(filepath)) {
+          const bytes = await readFileBinary(filepath)
+          await pfs.writeFile(`${REPO_DIR}/${newPath}`, bytes)
+        } else {
+          await pfs.writeFile(`${REPO_DIR}/${newPath}`, fileContent!, 'utf8')
+        }
         await pfs.unlink(`${REPO_DIR}/${filepath}`)
       })
 
@@ -622,9 +633,10 @@ export function useGit() {
     clone,
     sync,
     commitFile,
-    listMarkdownFiles,
+    listFiles,
     listRecentNotes,
     readFile,
+    readFileBinary,
     writeFile,
     createFile,
     moveFile,

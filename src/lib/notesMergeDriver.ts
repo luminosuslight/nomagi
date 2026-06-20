@@ -49,14 +49,32 @@ function mergeWholeDocuments(ours: string, theirs: string): string {
 /**
  * Notes merge driver: diff3 when edits don't overlap; on conflict, keep both
  * sides so nothing is lost (user can trim the result manually).
+ * Binary PDFs use simple 3-way resolution (prefer the side that changed).
  */
-export const notesMergeDriver: MergeDriverCallback = ({ contents }) => {
+export const notesMergeDriver: MergeDriverCallback = (args) => {
+  const { contents } = args
+  const filepath =
+    'filepath' in args && typeof args.filepath === 'string'
+      ? args.filepath
+      : 'path' in args && typeof (args as { path?: string }).path === 'string'
+        ? (args as { path: string }).path
+        : ''
   const baseContent = contents[0]
   const ourContent = contents[1]
   const theirContent = contents[2]
 
   if (ourContent === theirContent) {
     return { cleanMerge: true, mergedText: ourContent }
+  }
+
+  if (filepath.toLowerCase().endsWith('.pdf')) {
+    if (ourContent === baseContent) {
+      return { cleanMerge: true, mergedText: theirContent }
+    }
+    if (theirContent === baseContent) {
+      return { cleanMerge: true, mergedText: ourContent }
+    }
+    return { cleanMerge: true, mergedText: theirContent }
   }
 
   const ours = ourContent.match(LINEBREAKS)

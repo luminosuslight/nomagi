@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { provide, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, provide, ref, watch } from 'vue'
 import { ArrowLeft, Code2, PenLine, Plus, Trash2 } from 'lucide-vue-next'
 import { MilkdownProvider } from '@milkdown/vue'
 import MarkdownCodeEditor from '@/components/MarkdownCodeEditor.vue'
 import MilkdownEditor from '@/components/MilkdownEditor.vue'
+const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
 import Button from '@/components/ui/Button.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import { drawingEditingKey, editorOverlayRootKey } from '@/lib/editorOverlay'
+import { isPdfFile } from '@/lib/fileTypes'
+import { listDisplayName } from '@/lib/noteDisplay'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<{
   filename: string | null
   modelValue: string
+  pdfData?: Uint8Array | null
   isLoading: boolean
   showBack?: boolean
   canCreateNote?: boolean
@@ -28,6 +32,9 @@ const emit = defineEmits<{
 }>()
 
 type EditorMode = 'wysiwyg' | 'code'
+
+const isPdf = computed(() => Boolean(props.filename && isPdfFile(props.filename)))
+const displayName = computed(() => (props.filename ? listDisplayName(props.filename) : null))
 
 const editorPanel = ref<HTMLElement | null>(null)
 const drawingEditing = ref(false)
@@ -89,10 +96,10 @@ function setEditorMode(mode: EditorMode) {
         <ArrowLeft class="size-4" />
       </Button>
       <h2 class="min-w-0 flex-1 truncate text-sm font-medium">
-        {{ filename ?? 'Select a note' }}
+        {{ displayName ?? 'Select a note' }}
       </h2>
       <div
-        v-if="filename"
+        v-if="filename && !isPdf"
         class="flex shrink-0 items-center rounded-md border p-0.5"
         role="group"
         aria-label="Editor mode"
@@ -174,10 +181,15 @@ function setEditorMode(mode: EditorMode) {
         </Button>
       </div>
       <MarkdownCodeEditor
-        v-else-if="editorMode === 'code'"
+        v-else-if="!isPdf && editorMode === 'code'"
         :key="`${filename}-code`"
         :model-value="modelValue"
         @update:model-value="$emit('update:modelValue', $event)"
+      />
+      <PdfViewer
+        v-else-if="isPdf"
+        :key="`${filename}-pdf`"
+        :data="pdfData ?? null"
       />
       <MilkdownProvider v-else>
         <MilkdownEditor

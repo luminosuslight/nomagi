@@ -2,6 +2,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGit } from './useGit'
 import { errorMessage, reportError } from '@/lib/errors'
 import { previewFromContent } from '@/lib/noteDisplay'
+import { isPdfFile } from '@/lib/fileTypes'
 import type { RecentNote } from './useGit'
 
 type RecentNoteWithPreview = RecentNote & { preview: string }
@@ -30,6 +31,7 @@ export function useNotes() {
   const recentNotes = ref<RecentNoteWithPreview[]>([])
   const selectedFile = ref<string | null>(null)
   const content = ref('')
+  const pdfContent = ref<Uint8Array | null>(null)
   const isLoadingFiles = ref(false)
   const isLoadingContent = ref(false)
   const isSaving = ref(false)
@@ -52,6 +54,7 @@ export function useNotes() {
   }
 
   function isDirty(): boolean {
+    if (selectedFile.value && isPdfFile(selectedFile.value)) return false
     return (
       userEdited &&
       !skipSave &&
@@ -104,7 +107,13 @@ export function useNotes() {
 
     skipSave = true
     try {
-      content.value = await git.readFile(selectedFile.value)
+      if (isPdfFile(selectedFile.value)) {
+        pdfContent.value = await git.readFileBinary(selectedFile.value)
+        content.value = ''
+      } else {
+        content.value = await git.readFile(selectedFile.value)
+        pdfContent.value = null
+      }
       lastPersistedContent.value = content.value
     } catch (err) {
       reportError('readFile', err)
@@ -153,12 +162,15 @@ export function useNotes() {
       return
     }
 
-    const existing = new Set(await git.listMarkdownFiles())
+    const existing = new Set(await git.listFiles())
     const byRecent = await git.listRecentNotes()
     recentNotes.value = await Promise.all(
       byRecent
         .filter((note) => existing.has(note.filepath))
         .map(async (note) => {
+          if (isPdfFile(note.filepath)) {
+            return { ...note, preview: 'PDF' }
+          }
           try {
             const text = await git.readFile(note.filepath)
             return { ...note, preview: previewFromContent(text) }
@@ -179,7 +191,7 @@ export function useNotes() {
     const showLoading = !options.silent && files.value.length === 0
     if (showLoading) isLoadingFiles.value = true
     try {
-      files.value = await git.listMarkdownFiles()
+      files.value = await git.listFiles()
       await refreshRecentNotes()
       if (selectedFile.value && !files.value.includes(selectedFile.value)) {
         selectedFile.value = null
@@ -231,12 +243,20 @@ export function useNotes() {
     skipSave = true
 
     try {
-      content.value = await git.readFile(filepath)
-      lastPersistedContent.value = content.value
+      if (isPdfFile(filepath)) {
+        pdfContent.value = await git.readFileBinary(filepath)
+        content.value = ''
+        lastPersistedContent.value = ''
+      } else {
+        content.value = await git.readFile(filepath)
+        pdfContent.value = null
+        lastPersistedContent.value = content.value
+      }
     } catch (err) {
       reportError('readFile', err)
       saveError.value = errorMessage(err)
       content.value = ''
+      pdfContent.value = null
       lastPersistedContent.value = ''
     } finally {
       isLoadingContent.value = false
@@ -246,6 +266,7 @@ export function useNotes() {
 
   watch(content, () => {
     if (skipSave || isLoadingContent.value) return
+    if (selectedFile.value && isPdfFile(selectedFile.value)) return
     userEdited = true
     lastEditAt = Date.now()
     scheduleCommit()
@@ -257,7 +278,7 @@ export function useNotes() {
 
   async function createFile(options?: { name?: string; folder?: string }) {
     const filename = await git.createFile(options, '')
-    files.value = await git.listMarkdownFiles()
+    files.value = await git.listFiles()
     selectedFile.value = filename
     return filename
   }
@@ -285,6 +306,7 @@ export function useNotes() {
       skipSave = true
       selectedFile.value = null
       content.value = ''
+      pdfContent.value = null
       lastPersistedContent.value = ''
       skipSave = false
     }
@@ -318,6 +340,7 @@ export function useNotes() {
     recentNotes,
     selectedFile,
     content,
+    pdfContent,
     isLoadingFiles,
     isLoadingContent,
     saveError,

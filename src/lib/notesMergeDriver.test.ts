@@ -61,4 +61,29 @@ describe('notesMergeDriver', () => {
 
     expect(merge(base, ours, theirs)).toBe('intro\nours version\ntheirs version\n')
   })
+
+  it('prefers remote when both sides changed a PDF', () => {
+    const base = 'base-pdf'
+    const ours = 'local-pdf'
+    const theirs = 'remote-pdf'
+
+    const result = notesMergeDriver({
+      branches: ['main', 'main', 'main'],
+      contents: [base, ours, theirs],
+      path: 'doc.pdf',
+    })
+    expect(result).toMatchObject({ cleanMerge: true, mergedText: 'remote-pdf' })
+  })
+
+  it('keeps local PDF when only local changed', () => {
+    const base = 'same-pdf'
+    const ours = 'updated-local'
+
+    const result = notesMergeDriver({
+      branches: ['main', 'main', 'main'],
+      contents: [base, ours, base],
+      path: 'doc.pdf',
+    })
+    expect(result).toMatchObject({ cleanMerge: true, mergedText: 'updated-local' })
+  })
 })

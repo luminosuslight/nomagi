@@ -15,14 +15,18 @@ export function isIsoDateFilename(name: string): boolean {
 export function displayFilename(filepath: string): string | null {
   const basename = noteBasename(filepath)
   if (isIsoDateFilename(basename)) return null
-  return basename.endsWith('.md') ? basename.slice(0, -3) : basename
+  if (basename.endsWith('.md')) return basename.slice(0, -3)
+  if (basename.toLowerCase().endsWith('.pdf')) return basename.slice(0, -4)
+  return basename
 }
 
 export function listDisplayName(filepath: string): string {
   const named = displayFilename(filepath)
   if (named) return named
   const basename = noteBasename(filepath)
-  return basename.endsWith('.md') ? basename.slice(0, -3) : basename
+  if (basename.endsWith('.md')) return basename.slice(0, -3)
+  if (basename.toLowerCase().endsWith('.pdf')) return basename.slice(0, -4)
+  return basename
 }
 
 const DRAWING_FIGURE_RE = /<figure\b[^>]*>[\s\S]*?<\/figure>/gi

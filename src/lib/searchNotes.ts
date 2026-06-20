@@ -1,4 +1,5 @@
 import { previewFromContent } from '@/lib/noteDisplay'
+import { isPdfFile } from '@/lib/fileTypes'
 
 export type SearchResult = {
   filepath: string
@@ -35,6 +36,12 @@ export async function searchNotes(
   const lowerQuery = normalizedQuery.toLowerCase()
   const results = await Promise.all(
     files.map(async (filepath) => {
+      if (isPdfFile(filepath)) {
+        const filenameMatches = filepath.toLowerCase().includes(lowerQuery) ? 1 : 0
+        if (filenameMatches === 0) return null
+        return { filepath, matchCount: filenameMatches, preview: 'PDF' }
+      }
+
       const content = await readFile(filepath)
       const contentMatches = countOccurrences(content, normalizedQuery)
       const filenameMatches = filepath.toLowerCase().includes(lowerQuery) ? 1 : 0

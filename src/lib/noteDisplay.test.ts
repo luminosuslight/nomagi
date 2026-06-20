@@ -17,6 +17,10 @@ describe('listDisplayName', () => {
   it('uses basename for nested named paths', () => {
     expect(listDisplayName('docs/my-note.md')).toBe('my-note')
   })
+
+  it('strips .pdf extension', () => {
+    expect(listDisplayName('docs/paper.pdf')).toBe('paper')
+  })
 })
 
 describe('stripMarkdownForPreview', () => {

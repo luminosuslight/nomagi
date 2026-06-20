@@ -39,9 +39,9 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico}'],
-          // Main bundle (~2.2 MB) includes Milkdown, Vue, etc.; default limit is 2 MB.
-          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          globPatterns: ['**/*.{js,css,html,woff2,svg,png,ico,mjs}'],
+          // Main bundle includes Milkdown, Vue, pdf.js, etc.; default limit is 2 MB.
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },
       }),
     ],

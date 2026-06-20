@@ -49,6 +49,7 @@ const {
   recentNotes,
   selectedFile,
   content,
+  pdfContent,
   isLoadingFiles,
   isLoadingContent,
   hasUnsyncedChanges,
@@ -315,6 +316,7 @@ onUnmounted(() => {
     >
       <Editor
         v-model="content"
+        :pdf-data="pdfContent"
         :filename="selectedFile"
         :is-loading="isLoadingContent"
         :show-back="mobileView === 'editor'"
