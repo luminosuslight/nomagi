@@ -11,6 +11,7 @@ const props = defineProps<{
 
 const containerRef = ref<HTMLElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
+const scrollSurfaceStyle = ref<Record<string, string>>({})
 const currentPage = ref(1)
 const totalPages = ref(0)
 const loadError = ref<string | null>(null)
@@ -51,6 +52,17 @@ async function renderCurrentPage() {
   canvas.height = viewport.height
   canvas.style.width = `${viewport.width / pixelRatio}px`
   canvas.style.height = `${viewport.height / pixelRatio}px`
+
+  const displayW = viewport.width / pixelRatio
+  const displayH = viewport.height / pixelRatio
+  const surfaceW = Math.max(container.clientWidth, displayW + padding * 2)
+  const surfaceH = Math.max(container.clientHeight, displayH + padding * 2)
+  scrollSurfaceStyle.value = {
+    width: `${surfaceW}px`,
+    minWidth: `${surfaceW}px`,
+    height: `${surfaceH}px`,
+    minHeight: `${surfaceH}px`,
+  }
 
   const task = page.render({ canvasContext: context, viewport, canvas })
   activeRender?.cancel()
@@ -191,13 +203,13 @@ onUnmounted(() => {
   <div class="flex h-full min-h-0 flex-col">
     <div
       v-if="totalPages > 0"
-      class="flex shrink-0 items-center justify-center gap-2 border-b px-4 py-2"
+      class="flex shrink-0 touch-manipulation items-center justify-center gap-2 border-b px-4 py-2"
     >
       <Button
         type="button"
         variant="outline"
         size="icon"
-        class="size-9"
+        class="size-9 touch-manipulation"
         aria-label="First page"
         :disabled="currentPage <= 1"
         @click="goFirst"
@@ -208,7 +220,7 @@ onUnmounted(() => {
         type="button"
         variant="outline"
         size="icon"
-        class="size-9"
+        class="size-9 touch-manipulation"
         aria-label="Previous page"
         :disabled="currentPage <= 1"
         @click="goPrev"
@@ -222,7 +234,7 @@ onUnmounted(() => {
         type="button"
         variant="outline"
         size="icon"
-        class="size-9"
+        class="size-9 touch-manipulation"
         aria-label="Next page"
         :disabled="currentPage >= totalPages"
         @click="goNext"
@@ -233,7 +245,7 @@ onUnmounted(() => {
         type="button"
         variant="outline"
         size="icon"
-        class="size-9"
+        class="size-9 touch-manipulation"
         aria-label="Last page"
         :disabled="currentPage >= totalPages"
         @click="goLast"
@@ -244,7 +256,7 @@ onUnmounted(() => {
         type="button"
         variant="outline"
         size="icon"
-        class="size-9"
+        class="size-9 touch-manipulation"
         aria-label="Zoom out"
         :disabled="zoomLevel <= MIN_ZOOM"
         @click="zoomOut"
@@ -255,7 +267,7 @@ onUnmounted(() => {
         type="button"
         variant="outline"
         size="icon"
-        class="size-9"
+        class="size-9 touch-manipulation"
         aria-label="Zoom in"
         :disabled="zoomLevel >= MAX_ZOOM"
         @click="zoomIn"
@@ -265,17 +277,18 @@ onUnmounted(() => {
     </div>
     <div
       ref="containerRef"
-      class="min-h-0 flex-1 overflow-auto p-4"
+      class="min-h-0 flex-1 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
     >
       <p
         v-if="loadError"
-        class="text-base text-destructive"
+        class="p-4 text-base text-destructive"
       >
         {{ loadError }}
       </p>
       <div
         v-else
-        class="flex min-h-full min-w-full items-center justify-center"
+        class="box-border grid touch-pan-x touch-pan-y place-items-center p-4"
+        :style="scrollSurfaceStyle"
       >
         <canvas
           ref="canvasRef"

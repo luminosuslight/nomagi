@@ -20,7 +20,7 @@ const tabs: { id: SidebarView; label: string }[] = [
 </script>
 
 <template>
-  <div class="flex items-center gap-1 px-3 pt-3">
+  <div class="flex items-center gap-1 px-3 pt-3 pb-2">
     <Button
       v-for="tab in tabs"
       :key="tab.id"
