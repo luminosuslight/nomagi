@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import {
+  getStorageEstimateLabel,
   hasStoragePersistenceApi,
   shouldShowPersistDeniedToast,
   shouldShowQuotaWarningToast,
@@ -109,7 +110,10 @@ async function handleSync(manual = false) {
   try {
     const result = await syncNotes({ auto: !manual })
     if (result.skipped) return
-    if (manual) toast.success('Synced with remote')
+    if (manual) {
+      const storageLabel = await getStorageEstimateLabel()
+      toast.success('Synced with remote', storageLabel ? { description: storageLabel } : undefined)
+    }
   } catch (err) {
     reportError('sync', err)
     toast.error(errorMessage(err))

@@ -42,6 +42,37 @@ export async function isStoragePersisted(): Promise<boolean> {
   }
 }
 
+const GB = 1024 ** 3
+const MB = 1024 ** 2
+const KB = 1024
+
+export function formatStorageBytes(bytes: number): string {
+  if (bytes >= GB) {
+    const value = bytes / GB
+    return `${value >= 10 ? Math.round(value) : value.toFixed(1)} GB`
+  }
+  if (bytes >= MB) {
+    const value = bytes / MB
+    return `${value >= 10 ? Math.round(value) : value.toFixed(1)} MB`
+  }
+  if (bytes >= KB) {
+    return `${Math.round(bytes / KB)} KB`
+  }
+  return `${bytes} B`
+}
+
+export async function getStorageEstimateLabel(): Promise<string | null> {
+  if (!('storage' in navigator) || !('estimate' in navigator.storage)) return null
+  try {
+    const { usage = 0, quota } = await navigator.storage.estimate()
+    if (!quota || quota === 0) return null
+    return `${formatStorageBytes(usage)} of ${formatStorageBytes(quota)} used`
+  } catch (err) {
+    reportError('storage.estimate', err)
+    return null
+  }
+}
+
 export async function getStorageQuotaWarning(): Promise<string | null> {
   if (!('storage' in navigator) || !('estimate' in navigator.storage)) return null
   try {
@@ -49,10 +80,8 @@ export async function getStorageQuotaWarning(): Promise<string | null> {
     if (!quota || quota === 0) return null
     if (usage / quota < QUOTA_WARN_RATIO) return null
 
-    const usedMb = (usage / (1024 * 1024)).toFixed(0)
-    const quotaMb = (quota / (1024 * 1024)).toFixed(0)
     const percent = Math.round((usage / quota) * 100)
-    return `Local storage is ${usedMb} MB of ${quotaMb} MB (${percent}%). Sync notes or free device storage to avoid data loss.`
+    return `Local storage is ${formatStorageBytes(usage)} of ${formatStorageBytes(quota)} (${percent}%). Sync notes or free device storage to avoid data loss.`
   } catch (err) {
     reportError('storage.estimate', err)
     return null
