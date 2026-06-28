@@ -1,13 +1,18 @@
 declare module '@isomorphic-git/lightning-fs' {
   export default class LightningFS {
     constructor(name: string, options?: { wipe?: boolean })
+    init(name: string, options?: { wipe?: boolean }): void
     promises: {
+      init(name: string, options?: { wipe?: boolean }): Promise<void>
+      flush(): Promise<void>
       readFile(path: string, encoding: 'utf8'): Promise<string>
       readFile(path: string): Promise<Uint8Array>
       writeFile(path: string, data: string, encoding: 'utf8'): Promise<void>
       writeFile(path: string, data: Uint8Array): Promise<void>
       readdir(path: string): Promise<string[]>
       mkdir(path: string): Promise<void>
+      rmdir(path: string): Promise<void>
+      unlink(path: string): Promise<void>
       stat(path: string): Promise<{ isFile(): boolean; isDirectory(): boolean }>
     }
   }

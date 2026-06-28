@@ -100,20 +100,9 @@ function clearStoredSettings() {
   for (const key of keys) localStorage.removeItem(key)
 }
 
-async function rmRecursive(path: string): Promise<void> {
-  let stat
-  try {
-    stat = await pfs.stat(path)
-  } catch {
-    return
-  }
-  if (stat.isDirectory()) {
-    const entries = await pfs.readdir(path)
-    await Promise.all(entries.map((name) => rmRecursive(`${path}/${name}`)))
-    await pfs.rmdir(path)
-  } else {
-    await pfs.unlink(path)
-  }
+/** Wipe the LightningFS IndexedDB store. Required for reset — recursive delete only updates in-memory metadata and may not persist before reload. */
+async function wipeFilesystem(): Promise<void> {
+  await pfs.init(FS_NAME, { wipe: true })
 }
 
 function basicAuthHeader(token: string) {
@@ -263,7 +252,7 @@ async function recloneWithRecoveryDepth(): Promise<void> {
   await confirmRecloneForRecovery()
 
   await withStorageErrors(async () => {
-    await rmRecursive(REPO_DIR)
+    await wipeFilesystem()
   })
   await git.clone({
     ...remoteGitOptions(settings),
@@ -347,7 +336,7 @@ export function useGit() {
     try {
       await withGitLock(async () => {
         await withStorageErrors(async () => {
-          await rmRecursive(REPO_DIR)
+          await wipeFilesystem()
         })
         clearStoredSettings()
         Object.assign(settings, defaultSettings())
