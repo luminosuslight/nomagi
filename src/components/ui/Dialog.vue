@@ -25,12 +25,12 @@ defineProps<{
         aria-modal="true"
         :class="
           cn(
-            'relative z-50 grid w-full max-w-lg gap-4 border bg-background p-6 shadow-lg rounded-lg',
+            'relative z-50 flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col gap-4 overflow-hidden border bg-background p-6 shadow-lg rounded-lg',
             $props.class,
           )
         "
       >
-        <div class="flex flex-col gap-2">
+        <div class="flex shrink-0 flex-col gap-2 pr-8">
           <h2
             v-if="title"
             class="text-lg font-semibold"
@@ -44,7 +44,9 @@ defineProps<{
             {{ description }}
           </p>
         </div>
-        <slot />
+        <div class="min-h-0 overflow-y-auto overscroll-y-contain">
+          <slot />
+        </div>
         <Button
           variant="ghost"
           size="icon"

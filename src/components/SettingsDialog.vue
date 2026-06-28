@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
+import { Loader2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import Dialog from '@/components/ui/Dialog.vue'
 import ConfirmAlertDialog from '@/components/ui/ConfirmAlertDialog.vue'
@@ -178,9 +179,15 @@ function onSubmit() {
           </Button>
           <Button
             type="submit"
+            class="gap-2"
             :disabled="isBusy"
           >
-            {{ isCloned ? 'Save' : 'Clone Repository' }}
+            <Loader2
+              v-if="isBusy && !isCloned"
+              class="size-4 animate-spin"
+              aria-hidden="true"
+            />
+            {{ isCloned ? 'Save' : isBusy ? 'Cloning…' : 'Clone Repository' }}
           </Button>
         </div>
       </div>
