@@ -285,14 +285,14 @@ async function withMissingObjectRecovery<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-async function refreshCommitState() {
+async function refreshCommitState(cache: object = {}) {
   try {
     await withMissingObjectRecovery(async () => {
       const head = await resolveHeadOid()
       lastPushedCommitOid = localStorage.getItem(pushedOidStorageKey()) ?? head
       hasUnpushedCommits.value = head !== lastPushedCommitOid
 
-      const commits = await git.log({ fs, dir: REPO_DIR, depth: 1 })
+      const commits = await git.log({ fs, dir: REPO_DIR, depth: 1, cache })
       lastLocalCommitAt = commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : null
     })
   } catch {
@@ -381,12 +381,12 @@ export function useGit() {
     }
   }
 
-  async function pullWithNotesMerge() {
+  async function pullWithNotesMerge(cache: object = {}) {
     await withMissingObjectRecovery(async () => {
       const branch = await git.currentBranch({ fs, dir: REPO_DIR })
       if (!branch) throw new Error('No current branch')
 
-      const { fetchHead } = await git.fetch(remoteGitOptions(settings))
+      const { fetchHead } = await git.fetch({ ...remoteGitOptions(settings), cache })
 
       if (!fetchHead) return
 
@@ -404,15 +404,16 @@ export function useGit() {
         mergeDriver: notesMergeDriver,
         author: settings.author,
         committer: settings.author,
+        cache,
       })
 
       // Merge updates HEAD/index; workdir can still hold pre-merge blobs. force applies
       // the merged tree (notesMergeDriver already combined local + remote).
-      await git.checkout({ fs, dir: REPO_DIR, ref: branch, force: true })
+      await git.checkout({ fs, dir: REPO_DIR, ref: branch, force: true, cache })
     })
   }
 
-  async function pushToRemote() {
+  async function pushToRemote(cache: object = {}) {
     await withMissingObjectRecovery(async () => {
       await git.push({
         fs,
@@ -421,6 +422,7 @@ export function useGit() {
         corsProxy: corsProxyForRepo(settings.corsProxy, settings.repoUrl),
         headers: authHeaders(settings),
         onAuth: auth(settings),
+        cache,
       })
     })
   }
@@ -434,16 +436,21 @@ export function useGit() {
 
     try {
       await withGitLock(async () => {
+        // Single cache shared across all git operations in this sync so the
+        // pack file is read and SHA-1-verified only once. After sync() returns
+        // the cache goes out of scope, releasing the pack Uint8Array for GC.
+        const cache = {}
+
         try {
-          await pushToRemote()
+          await pushToRemote(cache)
         } catch (err) {
           if (!isPushNotFastForward(err)) throw err
-          await pullWithNotesMerge()
-          await pushToRemote()
+          await pullWithNotesMerge(cache)
+          await pushToRemote(cache)
         }
 
         saveLastPushedCommitOid(await resolveHeadOid())
-        await refreshCommitState()
+        await refreshCommitState(cache)
       })
 
       syncStatus.value = 'idle'
@@ -483,6 +490,7 @@ export function useGit() {
 
   async function listRecentNotes(): Promise<RecentNote[]> {
     const names = await listFiles()
+    const cache = {}
     const withDates = await Promise.all(
       names.map(async (filepath) => {
         try {
@@ -492,6 +500,7 @@ export function useGit() {
             filepath,
             depth: 1,
             force: true,
+            cache,
           })
           const lastModified = commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : 0
           return { filepath, lastModified }

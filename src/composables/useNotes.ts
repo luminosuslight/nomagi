@@ -38,6 +38,7 @@ export function useNotes() {
   const saveError = ref<string | null>(null)
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null
+  let refreshRecentNotesTimer: ReturnType<typeof setTimeout> | null = null
   let skipSave = false
   /** True after the user edits the open note (not Milkdown parse/normalize on load). */
   let userEdited = false
@@ -51,6 +52,15 @@ export function useNotes() {
       clearTimeout(saveTimer)
       saveTimer = null
     }
+  }
+
+  /** Debounced wrapper — collapses rapid back-to-back calls into a single run. */
+  function scheduleRefreshRecentNotes() {
+    if (refreshRecentNotesTimer) clearTimeout(refreshRecentNotesTimer)
+    refreshRecentNotesTimer = setTimeout(() => {
+      refreshRecentNotesTimer = null
+      void refreshRecentNotes().catch((err) => reportError('refreshRecent', err))
+    }, 200)
   }
 
   function isDirty(): boolean {
@@ -192,7 +202,7 @@ export function useNotes() {
     if (showLoading) isLoadingFiles.value = true
     try {
       files.value = await git.listFiles()
-      await refreshRecentNotes()
+      scheduleRefreshRecentNotes()
       if (selectedFile.value && !files.value.includes(selectedFile.value)) {
         selectedFile.value = null
       }
@@ -202,7 +212,7 @@ export function useNotes() {
   }
 
   git.onAfterCommit(() => {
-    void refreshRecentNotes().catch((err) => reportError('refreshRecent', err))
+    scheduleRefreshRecentNotes()
   })
 
   async function openFile(filepath: string, prevFilepath: string | null = null) {
@@ -331,6 +341,7 @@ export function useNotes() {
 
   onUnmounted(() => {
     clearSaveTimer()
+    if (refreshRecentNotesTimer) clearTimeout(refreshRecentNotesTimer)
     document.removeEventListener('visibilitychange', handleVisibilityChange)
   })
 
