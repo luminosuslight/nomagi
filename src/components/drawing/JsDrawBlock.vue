@@ -8,6 +8,7 @@ import 'js-draw/bundledStyles'
 import { computed, isRef, nextTick, onUnmounted, ref, watch, type Ref } from 'vue'
 import { Pencil } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
+import { compactJsDrawSvgMarkup } from '@/lib/drawing/compactJsDrawSvg'
 import { configureJsDrawPens, jsDrawPenSettings } from '@/lib/drawing/configureJsDrawPens'
 import { installCoalescedJsDrawPointerInput } from '@/lib/drawing/installCoalescedJsDrawPointerInput'
 import { installEinkWrapperPenInput } from '@/lib/drawing/installEinkWrapperPenInput'
@@ -109,7 +110,7 @@ function startEditing(event: MouseEvent) {
 }
 
 function stopEditing() {
-  const markup = editor ? editor.toSVG().outerHTML : null
+  const markup = editor ? compactJsDrawSvgMarkup(editor.toSVG().outerHTML) : null
   editing.value = false
   if (markup) props.onUpdateSvgMarkup(markup)
 }

@@ -1,3 +1,5 @@
+import { compactJsDrawSvgMarkup } from '@/lib/drawing/compactJsDrawSvg'
+
 export function isJsDrawFigureHtml(html: string): boolean {
   return html.includes('data-type="js-draw"')
 }
@@ -10,7 +12,7 @@ export function svgMarkupFromFigureHtml(html: string): string {
 }
 
 export function figureHtmlFromSvgMarkup(svgMarkup: string): string {
-  const svg = svgMarkup.trim()
+  const svg = compactJsDrawSvgMarkup(svgMarkup)
   if (!svg) {
     return `<figure data-type="js-draw" class="js-draw-sketch">\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 250"></svg>\n</figure>`
   }
