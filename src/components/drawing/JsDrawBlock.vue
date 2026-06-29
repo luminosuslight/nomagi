@@ -10,6 +10,7 @@ import { Pencil } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import { configureJsDrawPens, jsDrawPenSettings } from '@/lib/drawing/configureJsDrawPens'
 import { installCoalescedJsDrawPointerInput } from '@/lib/drawing/installCoalescedJsDrawPointerInput'
+import { installEinkWrapperPenInput } from '@/lib/drawing/installEinkWrapperPenInput'
 
 const props = defineProps<{
   svgMarkup: string | Ref<string>
@@ -23,6 +24,7 @@ const editing = ref(false)
 const editorHost = ref<HTMLElement | null>(null)
 const previewHost = ref<HTMLElement | null>(null)
 let editor: Editor | null = null
+let removeEinkPenInput: (() => void) | null = null
 
 const svgMarkupValue = computed(() =>
   isRef(props.svgMarkup) ? props.svgMarkup.value : props.svgMarkup,
@@ -59,6 +61,8 @@ function updatePreview() {
 }
 
 function destroyEditor() {
+  removeEinkPenInput?.()
+  removeEinkPenInput = null
   editor?.remove()
   editor = null
 }
@@ -77,6 +81,7 @@ async function mountEditor() {
   })
   installCoalescedJsDrawPointerInput(editor)
   configureJsDrawPens(editor)
+  removeEinkPenInput = installEinkWrapperPenInput(editor)
 
   const toolbar = editor.addToolbar(false)
   toolbar.addDefaultActionButtons()
