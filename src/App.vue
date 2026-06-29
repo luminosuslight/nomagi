@@ -369,6 +369,7 @@ onUnmounted(() => {
 
   <Toaster
     position="bottom-center"
+    theme="light"
     rich-colors
   />
 </template>
