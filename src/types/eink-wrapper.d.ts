@@ -14,7 +14,6 @@ interface EinkPenBatch {
 interface EinkWebAppWrapper {
   protocolVersion: number
   penBridgeMode: string
-  penWebSocketUrl: string
   /** WebView width in physical view pixels (matches native pen samples). */
   viewWidthPx?: number
   /** WebView height in physical view pixels (matches native pen samples). */
