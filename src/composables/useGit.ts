@@ -267,14 +267,20 @@ async function ensureSessionGitMtimes(cache: object = {}): Promise<Record<string
   if (existing) return existing
   if (!loadClonedAt()) return {}
 
-  const times = await collectGitNoteMtimes({
-    fs,
-    dir: REPO_DIR,
-    cache,
-    depth: INITIAL_CLONE_DEPTH,
-  })
-  sessionStorage.setItem(gitMtimesSessionKey(), JSON.stringify(times))
-  return times
+  try {
+    const times = await collectGitNoteMtimes({
+      fs,
+      dir: REPO_DIR,
+      cache,
+      depth: INITIAL_CLONE_DEPTH,
+    })
+    sessionStorage.setItem(gitMtimesSessionKey(), JSON.stringify(times))
+    return times
+  } catch (err) {
+    reportError('git note mtimes', err)
+    sessionStorage.setItem(gitMtimesSessionKey(), JSON.stringify({}))
+    return {}
+  }
 }
 
 function saveLastPushedCommitOid(oid: string) {
