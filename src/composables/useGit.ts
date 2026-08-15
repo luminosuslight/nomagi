@@ -386,7 +386,12 @@ export function useGit() {
       const branch = await git.currentBranch({ fs, dir: REPO_DIR })
       if (!branch) throw new Error('No current branch')
 
-      const { fetchHead } = await git.fetch({ ...remoteGitOptions(settings), cache })
+      const { fetchHead } = await git.fetch({
+        ...remoteGitOptions(settings),
+        cache,
+        // Keep routine sync shallow; recovery fetch uses RECOVERY_HISTORY_DEPTH.
+        depth: INITIAL_CLONE_DEPTH,
+      })
 
       if (!fetchHead) return
 
