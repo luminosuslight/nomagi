@@ -490,20 +490,13 @@ export function useGit() {
 
   async function listRecentNotes(): Promise<RecentNote[]> {
     const names = await listFiles()
-    const cache = {}
     const withDates = await Promise.all(
       names.map(async (filepath) => {
         try {
-          const commits = await git.log({
-            fs,
-            dir: REPO_DIR,
-            filepath,
-            depth: 1,
-            force: true,
-            cache,
-          })
-          const lastModified = commits.length > 0 ? commits[0].commit.committer.timestamp * 1000 : 0
-          return { filepath, lastModified }
+          // Avoid git.log({ filepath }): it walks history until that file's blob
+          // changes, so untouched notes scan the whole pack. N files accumulate.
+          const { mtimeMs } = await pfs.stat(`${REPO_DIR}/${filepath}`)
+          return { filepath, lastModified: mtimeMs }
         } catch {
           return { filepath, lastModified: 0 }
         }

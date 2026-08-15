@@ -13,7 +13,7 @@ declare module '@isomorphic-git/lightning-fs' {
       mkdir(path: string): Promise<void>
       rmdir(path: string): Promise<void>
       unlink(path: string): Promise<void>
-      stat(path: string): Promise<{ isFile(): boolean; isDirectory(): boolean }>
+      stat(path: string): Promise<{ isFile(): boolean; isDirectory(): boolean; mtimeMs: number }>
     }
   }
 }
