@@ -467,8 +467,11 @@ export function useGit() {
 
   async function commitFile(filepath: string, message?: string) {
     let amended = false
+    // Shared so add/commit/log parse and SHA-1-verify the pack once per persist.
+    let cache = {}
     await withMissingObjectRecovery(async () => {
-      await git.add({ fs, dir: REPO_DIR, filepath })
+      cache = {}
+      await git.add({ fs, dir: REPO_DIR, filepath, cache })
       amended = await shouldAmendCommit()
       await git.commit({
         fs,
@@ -476,9 +479,10 @@ export function useGit() {
         message: message ?? `update ${filepath}`,
         author: settings.author,
         amend: amended,
+        cache,
       })
     })
-    await refreshCommitState()
+    await refreshCommitState(cache)
     console.log(amended ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
     await notifyAfterCommit()
   }
