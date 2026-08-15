@@ -14,6 +14,12 @@ import {
   type ResolveNewNoteOptions,
 } from '@/lib/noteFilenames'
 import { isNoteFile, isPdfFile } from '@/lib/fileTypes'
+import {
+  CLONED_AT_KEY_PREFIX,
+  collectGitNoteMtimes,
+  GIT_MTIMES_SESSION_PREFIX,
+  resolveRecentLastModified,
+} from '@/lib/recentNoteMtimes'
 
 export class RepositoryRepairCancelledError extends Error {
   constructor() {
@@ -92,12 +98,20 @@ function clearStoredSettings() {
       key === 'corsProxy' ||
       key === 'authorName' ||
       key === 'authorEmail' ||
-      key.startsWith(pushedPrefix)
+      key.startsWith(pushedPrefix) ||
+      key.startsWith(CLONED_AT_KEY_PREFIX)
     ) {
       keys.push(key)
     }
   }
   for (const key of keys) localStorage.removeItem(key)
+
+  const sessionKeys: string[] = []
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i)
+    if (key?.startsWith(GIT_MTIMES_SESSION_PREFIX)) sessionKeys.push(key)
+  }
+  for (const key of sessionKeys) sessionStorage.removeItem(key)
 }
 
 /** Wipe the LightningFS IndexedDB store. Required for reset — recursive delete only updates in-memory metadata and may not persist before reload. */
@@ -217,6 +231,52 @@ function pushedOidStorageKey(): string {
   return `${LAST_PUSHED_OID_KEY}:${settings.repoUrl.trim()}`
 }
 
+function clonedAtStorageKey(): string {
+  return `${CLONED_AT_KEY_PREFIX}${settings.repoUrl.trim()}`
+}
+
+function gitMtimesSessionKey(): string {
+  return `${GIT_MTIMES_SESSION_PREFIX}${settings.repoUrl.trim()}`
+}
+
+function loadClonedAt(): number | null {
+  const raw = localStorage.getItem(clonedAtStorageKey())
+  if (!raw) return null
+  const value = Number(raw)
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
+function saveClonedAt(at: number) {
+  localStorage.setItem(clonedAtStorageKey(), String(at))
+}
+
+function loadSessionGitMtimes(): Record<string, number> | null {
+  try {
+    const raw = sessionStorage.getItem(gitMtimesSessionKey())
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    return parsed as Record<string, number>
+  } catch {
+    return null
+  }
+}
+
+async function ensureSessionGitMtimes(cache: object = {}): Promise<Record<string, number>> {
+  const existing = loadSessionGitMtimes()
+  if (existing) return existing
+  if (!loadClonedAt()) return {}
+
+  const times = await collectGitNoteMtimes({
+    fs,
+    dir: REPO_DIR,
+    cache,
+    depth: INITIAL_CLONE_DEPTH,
+  })
+  sessionStorage.setItem(gitMtimesSessionKey(), JSON.stringify(times))
+  return times
+}
+
 function saveLastPushedCommitOid(oid: string) {
   lastPushedCommitOid = oid
   const repoUrl = settings.repoUrl.trim()
@@ -262,6 +322,9 @@ async function recloneWithRecoveryDepth(): Promise<void> {
   isCloned.value = true
   const head = await resolveHeadOid()
   saveLastPushedCommitOid(head)
+  saveClonedAt(Date.now())
+  sessionStorage.removeItem(gitMtimesSessionKey())
+  await ensureSessionGitMtimes()
 }
 
 async function withMissingObjectRecovery<T>(fn: () => Promise<T>): Promise<T> {
@@ -374,7 +437,10 @@ export function useGit() {
         isCloned.value = true
         const head = await resolveHeadOid()
         saveLastPushedCommitOid(head)
+        saveClonedAt(Date.now())
+        sessionStorage.removeItem(gitMtimesSessionKey())
         await refreshCommitState()
+        await ensureSessionGitMtimes()
       })
     } finally {
       isBusy.value = false
@@ -499,13 +565,18 @@ export function useGit() {
 
   async function listRecentNotes(): Promise<RecentNote[]> {
     const names = await listFiles()
+    const clonedAt = loadClonedAt()
+    const gitTimes = clonedAt ? await ensureSessionGitMtimes() : {}
     const withDates = await Promise.all(
       names.map(async (filepath) => {
         try {
           // Avoid git.log({ filepath }): it walks history until that file's blob
           // changes, so untouched notes scan the whole pack. N files accumulate.
           const { mtimeMs } = await pfs.stat(`${REPO_DIR}/${filepath}`)
-          return { filepath, lastModified: mtimeMs }
+          return {
+            filepath,
+            lastModified: resolveRecentLastModified(mtimeMs, clonedAt, gitTimes[filepath]),
+          }
         } catch {
           return { filepath, lastModified: 0 }
         }
