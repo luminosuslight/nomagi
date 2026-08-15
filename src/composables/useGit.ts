@@ -186,10 +186,10 @@ async function repoExists(): Promise<boolean> {
   }
 }
 
-const afterCommitListeners = new Set<() => void | Promise<void>>()
+const afterCommitListeners = new Set<(filepath: string) => void | Promise<void>>()
 
-async function notifyAfterCommit() {
-  await Promise.all([...afterCommitListeners].map((listener) => listener()))
+async function notifyAfterCommit(filepath: string) {
+  await Promise.all([...afterCommitListeners].map((listener) => listener(filepath)))
 }
 
 const settings = reactive(loadSettings())
@@ -484,7 +484,7 @@ export function useGit() {
     })
     await refreshCommitState(cache)
     console.log(amended ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
-    await notifyAfterCommit()
+    await notifyAfterCommit(filepath)
   }
 
   async function listFiles(): Promise<string[]> {
@@ -581,7 +581,7 @@ export function useGit() {
       })
       await refreshCommitState()
       console.log(amended ? `[git] amended commit: ${newPath}` : `[git] commit: ${newPath}`)
-      await notifyAfterCommit()
+      await notifyAfterCommit(newPath)
       return newPath
     })
   }
@@ -605,11 +605,11 @@ export function useGit() {
       })
       await refreshCommitState()
       console.log(amended ? `[git] amended commit: ${filepath}` : `[git] commit: ${filepath}`)
-      await notifyAfterCommit()
+      await notifyAfterCommit(filepath)
     })
   }
 
-  function onAfterCommit(listener: () => void | Promise<void>) {
+  function onAfterCommit(listener: (filepath: string) => void | Promise<void>) {
     afterCommitListeners.add(listener)
     return () => afterCommitListeners.delete(listener)
   }

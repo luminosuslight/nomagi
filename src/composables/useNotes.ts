@@ -166,6 +166,12 @@ export function useNotes() {
     queueBackgroundSync({ reload: false })
   }
 
+  async function previewForNote(filepath: string, knownContent?: string): Promise<string> {
+    if (isPdfFile(filepath)) return 'PDF'
+    const text = knownContent ?? (await git.readFile(filepath))
+    return previewFromContent(text)
+  }
+
   async function refreshRecentNotes() {
     if (!git.isCloned.value) {
       recentNotes.value = []
@@ -178,17 +184,32 @@ export function useNotes() {
       byRecent
         .filter((note) => existing.has(note.filepath))
         .map(async (note) => {
-          if (isPdfFile(note.filepath)) {
-            return { ...note, preview: 'PDF' }
-          }
           try {
-            const text = await git.readFile(note.filepath)
-            return { ...note, preview: previewFromContent(text) }
+            return { ...note, preview: await previewForNote(note.filepath) }
           } catch {
             return { ...note, preview: 'Empty note' }
           }
         }),
     )
+  }
+
+  /** After a persist, update only that note so we do not re-read every file. */
+  async function bumpRecentNote(filepath: string) {
+    if (!git.isCloned.value) return
+
+    try {
+      const preview =
+        selectedFile.value === filepath
+          ? await previewForNote(filepath, content.value)
+          : await previewForNote(filepath)
+      const note = { filepath, lastModified: Date.now(), preview }
+      recentNotes.value = [
+        note,
+        ...recentNotes.value.filter((entry) => entry.filepath !== filepath),
+      ]
+    } catch {
+      recentNotes.value = recentNotes.value.filter((entry) => entry.filepath !== filepath)
+    }
   }
 
   async function refreshFiles(options: { silent?: boolean } = {}) {
@@ -211,8 +232,8 @@ export function useNotes() {
     }
   }
 
-  git.onAfterCommit(() => {
-    scheduleRefreshRecentNotes()
+  git.onAfterCommit((filepath) => {
+    void bumpRecentNote(filepath).catch((err) => reportError('refreshRecent', err))
   })
 
   async function openFile(filepath: string, prevFilepath: string | null = null) {
