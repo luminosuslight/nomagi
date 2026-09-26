@@ -11,8 +11,10 @@ import { corsProxyForRepo, loadCorsProxySetting } from '@/lib/gitCorsProxy'
 import {
   resolveMoveNotePath,
   resolveNewNoteFilename,
+  resolveRenameNotePath,
   type ResolveNewNoteOptions,
 } from '@/lib/noteFilenames'
+import { assertSafeRelativePath } from '@/lib/noteFolders'
 import { isNoteFile, isPdfFile } from '@/lib/fileTypes'
 import {
   CLONED_AT_KEY_PREFIX,
@@ -155,11 +157,8 @@ function remoteGitOptions(gitSettings: GitSettings, repoUrl = gitSettings.repoUr
   }
 }
 
-async function ensureParentDirs(filepath: string): Promise<void> {
-  const slash = filepath.lastIndexOf('/')
-  if (slash === -1) return
-
-  const parts = filepath.slice(0, slash).split('/')
+async function ensureDir(dirPath: string): Promise<void> {
+  const parts = dirPath.split('/').filter(Boolean)
   let dir = REPO_DIR
   for (const part of parts) {
     dir = `${dir}/${part}`
@@ -171,24 +170,37 @@ async function ensureParentDirs(filepath: string): Promise<void> {
   }
 }
 
-async function collectNoteFiles(dir: string, prefix: string): Promise<string[]> {
+async function ensureParentDirs(filepath: string): Promise<void> {
+  const slash = filepath.lastIndexOf('/')
+  if (slash === -1) return
+  await ensureDir(filepath.slice(0, slash))
+}
+
+async function collectRepoEntries(
+  dir: string,
+  prefix: string,
+): Promise<{ files: string[]; folders: string[] }> {
   const entries = await pfs.readdir(dir)
   const files: string[] = []
+  const folders: string[] = []
 
   for (const name of entries) {
     if (name.startsWith('.')) continue
     const fullPath = `${dir}/${name}`
     const stat = await pfs.stat(fullPath)
     if (stat.isDirectory()) {
-      const nested = await collectNoteFiles(fullPath, prefix ? `${prefix}/${name}` : name)
-      files.push(...nested)
+      const folderPath = prefix ? `${prefix}/${name}` : name
+      folders.push(folderPath)
+      const nested = await collectRepoEntries(fullPath, folderPath)
+      files.push(...nested.files)
+      folders.push(...nested.folders)
       continue
     }
     if (!isNoteFile(name)) continue
     files.push(prefix ? `${prefix}/${name}` : name)
   }
 
-  return files
+  return { files, folders }
 }
 
 async function repoExists(): Promise<boolean> {
@@ -564,9 +576,16 @@ export function useGit() {
     await notifyAfterCommit(filepath)
   }
 
+  async function listRepoContents(): Promise<{ files: string[]; folders: string[] }> {
+    const listing = await collectRepoEntries(REPO_DIR, '')
+    listing.files.sort()
+    listing.folders.sort((a, b) => a.localeCompare(b))
+    return listing
+  }
+
   async function listFiles(): Promise<string[]> {
-    const files = await collectNoteFiles(REPO_DIR, '')
-    return files.sort()
+    const { files } = await listRepoContents()
+    return files
   }
 
   async function listRecentNotes(): Promise<RecentNote[]> {
@@ -627,6 +646,46 @@ export function useGit() {
     return filename
   }
 
+  async function relocateFile(
+    filepath: string,
+    newPath: string,
+    message: string,
+    content?: string,
+  ) {
+    if (newPath === filepath) return filepath
+
+    const fileContent = content ?? (isPdfFile(filepath) ? null : await readFile(filepath))
+
+    await withStorageErrors(async () => {
+      await ensureParentDirs(newPath)
+      if (isPdfFile(filepath)) {
+        const bytes = await readFileBinary(filepath)
+        await pfs.writeFile(`${REPO_DIR}/${newPath}`, bytes)
+      } else {
+        await pfs.writeFile(`${REPO_DIR}/${newPath}`, fileContent!, 'utf8')
+      }
+      await pfs.unlink(`${REPO_DIR}/${filepath}`)
+    })
+
+    let amended = false
+    await withMissingObjectRecovery(async () => {
+      await git.updateIndex({ fs, dir: REPO_DIR, filepath, remove: true })
+      await git.add({ fs, dir: REPO_DIR, filepath: newPath })
+      amended = await shouldAmendCommit()
+      await git.commit({
+        fs,
+        dir: REPO_DIR,
+        message,
+        author: settings.author,
+        amend: amended,
+      })
+    })
+    await refreshCommitState()
+    console.log(amended ? `[git] amended commit: ${newPath}` : `[git] commit: ${newPath}`)
+    await notifyAfterCommit(newPath)
+    return newPath
+  }
+
   async function moveFile(filepath: string, targetFolder: string, content?: string) {
     return withGitLock(async () => {
       const existing = await listFiles()
@@ -634,38 +693,26 @@ export function useGit() {
       if (newPath === filepath) {
         throw new Error('Note is already in that folder')
       }
-
-      const fileContent = content ?? (isPdfFile(filepath) ? null : await readFile(filepath))
-
-      await withStorageErrors(async () => {
-        await ensureParentDirs(newPath)
-        if (isPdfFile(filepath)) {
-          const bytes = await readFileBinary(filepath)
-          await pfs.writeFile(`${REPO_DIR}/${newPath}`, bytes)
-        } else {
-          await pfs.writeFile(`${REPO_DIR}/${newPath}`, fileContent!, 'utf8')
-        }
-        await pfs.unlink(`${REPO_DIR}/${filepath}`)
-      })
-
-      let amended = false
-      await withMissingObjectRecovery(async () => {
-        await git.updateIndex({ fs, dir: REPO_DIR, filepath, remove: true })
-        await git.add({ fs, dir: REPO_DIR, filepath: newPath })
-        amended = await shouldAmendCommit()
-        await git.commit({
-          fs,
-          dir: REPO_DIR,
-          message: `move ${filepath} to ${newPath}`,
-          author: settings.author,
-          amend: amended,
-        })
-      })
-      await refreshCommitState()
-      console.log(amended ? `[git] amended commit: ${newPath}` : `[git] commit: ${newPath}`)
-      await notifyAfterCommit(newPath)
-      return newPath
+      return relocateFile(filepath, newPath, `move ${filepath} to ${newPath}`, content)
     })
+  }
+
+  async function renameFile(filepath: string, newStem: string, content?: string) {
+    return withGitLock(async () => {
+      const existing = await listFiles()
+      const newPath = resolveRenameNotePath(filepath, newStem, existing)
+      return relocateFile(filepath, newPath, `rename ${filepath} to ${newPath}`, content)
+    })
+  }
+
+  async function createFolder(folderPath: string) {
+    const folder = assertSafeRelativePath(folderPath)
+    await withGitLock(async () => {
+      await withStorageErrors(async () => {
+        await ensureDir(folder)
+      })
+    })
+    return folder
   }
 
   async function deleteFile(filepath: string) {
@@ -710,13 +757,16 @@ export function useGit() {
     clone,
     sync,
     commitFile,
+    listRepoContents,
     listFiles,
     listRecentNotes,
     readFile,
     readFileBinary,
     writeFile,
     createFile,
+    createFolder,
     moveFile,
+    renameFile,
     deleteFile,
     onAfterCommit,
   }

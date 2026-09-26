@@ -11,6 +11,7 @@ import {
 import { errorMessage, reportError } from '@/lib/errors'
 import { formatRelativeTime } from '@/lib/formatRelativeTime'
 import { listDisplayName } from '@/lib/noteDisplay'
+import { resolveNewFolderPath } from '@/lib/noteFolders'
 import { Plus, Settings } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
@@ -21,8 +22,8 @@ import SidebarViewTabs, { type SidebarView } from '@/components/SidebarViewTabs.
 import Editor from '@/components/Editor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import NewNoteDialog from '@/components/NewNoteDialog.vue'
+import NewFolderDialog from '@/components/NewFolderDialog.vue'
 import MoveNoteDialog from '@/components/MoveNoteDialog.vue'
-import { listFoldersFromFiles } from '@/lib/noteFolders'
 import SyncButton from '@/components/SyncButton.vue'
 import ConfirmAlertDialog from '@/components/ui/ConfirmAlertDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
@@ -46,6 +47,7 @@ const {
   syncStatus,
   isBusy,
   files,
+  folders,
   recentNotes,
   selectedFile,
   content,
@@ -62,16 +64,19 @@ const {
   leaveCurrentFile,
   refreshFiles,
   createFile,
+  createFolder,
   moveFile,
+  renameFile,
   deleteFile,
   readFile,
 } = useNotes()
 
 const settingsOpen = ref(false)
 const newNoteOpen = ref(false)
+const newNoteFolder = ref<string | undefined>(undefined)
+const newFolderOpen = ref(false)
+const newFolderParent = ref<string | undefined>(undefined)
 const moveNoteOpen = ref(false)
-
-const noteFolders = computed(() => listFoldersFromFiles(files.value))
 const sidebarView = ref<SidebarView>('recent')
 const mobileView = ref<MobileView>('files')
 const isOnline = ref(navigator.onLine)
@@ -132,7 +137,28 @@ function handleEditorBack() {
 }
 
 function handleNewFile() {
+  newNoteFolder.value = undefined
   newNoteOpen.value = true
+}
+
+function handleNewNoteInFolder(folder: string) {
+  newNoteFolder.value = folder
+  newNoteOpen.value = true
+}
+
+function openNewFolder(parent?: string) {
+  newFolderParent.value = parent
+  newFolderOpen.value = true
+}
+
+async function handleCreateFolder(payload: { name: string; folder: string }) {
+  try {
+    const folder = await createFolder(resolveNewFolderPath(payload.name, payload.folder))
+    toast.success(`Created ${folder}`)
+  } catch (err) {
+    reportError('createFolder', err)
+    toast.error(errorMessage(err))
+  }
 }
 
 async function handleCreateNote(payload: { name?: string; folder: string }) {
@@ -175,6 +201,18 @@ function handleEditorDelete() {
 function handleEditorMove() {
   if (!selectedFile.value || isBusy.value) return
   moveNoteOpen.value = true
+}
+
+async function handleRename(name: string) {
+  if (!selectedFile.value) return
+  const previous = selectedFile.value
+  try {
+    const newPath = await renameFile(previous, name)
+    if (newPath !== previous) toast.success(`Renamed to ${listDisplayName(newPath)}`)
+  } catch (err) {
+    reportError('renameFile', err)
+    toast.error(errorMessage(err))
+  }
 }
 
 async function handleMoveNote(payload: { folder: string }) {
@@ -284,11 +322,16 @@ onUnmounted(() => {
       <FileList
         v-if="sidebarView === 'files'"
         :files="files"
+        :folders="folders"
         :selected-file="selectedFile"
         :is-loading="isLoadingFiles"
         :delete-disabled="isBusy"
+        :actions-disabled="!isCloned || isBusy"
         @select="selectFile"
         @delete="handleDelete"
+        @create-folder="openNewFolder()"
+        @create-subfolder="openNewFolder"
+        @create-in-folder="handleNewNoteInFolder"
       />
       <NotePreviewList
         v-else-if="sidebarView === 'recent'"
@@ -323,9 +366,11 @@ onUnmounted(() => {
         :can-create-note="isCloned && !isBusy"
         :delete-disabled="isBusy || !selectedFile"
         :move-disabled="isBusy || !selectedFile"
+        :rename-disabled="isBusy || !selectedFile"
         @back="handleEditorBack"
         @new-note="handleNewFile"
         @move="handleEditorMove"
+        @rename="handleRename"
         @delete="handleEditorDelete"
       />
     </main>
@@ -342,15 +387,24 @@ onUnmounted(() => {
 
     <NewNoteDialog
       v-model="newNoteOpen"
-      :folders="noteFolders"
+      :folders="folders"
+      :initial-folder="newNoteFolder"
       :is-busy="isBusy"
       @create="handleCreateNote"
+    />
+
+    <NewFolderDialog
+      v-model="newFolderOpen"
+      :folders="folders"
+      :initial-folder="newFolderParent"
+      :is-busy="isBusy"
+      @create="handleCreateFolder"
     />
 
     <MoveNoteDialog
       v-model="moveNoteOpen"
       :filepath="selectedFile"
-      :folders="noteFolders"
+      :folders="folders"
       :is-busy="isBusy"
       @move="handleMoveNote"
     />

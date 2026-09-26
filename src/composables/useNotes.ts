@@ -28,6 +28,7 @@ const SYNC_SKIP_EDIT_MS = 2_000
 export function useNotes() {
   const git = useGit()
   const files = ref<string[]>([])
+  const folders = ref<string[]>([])
   const recentNotes = ref<RecentNoteWithPreview[]>([])
   const selectedFile = ref<string | null>(null)
   const content = ref('')
@@ -215,6 +216,7 @@ export function useNotes() {
   async function refreshFiles(options: { silent?: boolean } = {}) {
     if (!git.isCloned.value) {
       files.value = []
+      folders.value = []
       recentNotes.value = []
       return
     }
@@ -222,11 +224,8 @@ export function useNotes() {
     const showLoading = !options.silent && files.value.length === 0
     if (showLoading) isLoadingFiles.value = true
     try {
-      files.value = await git.listFiles()
+      await syncListing()
       scheduleRefreshRecentNotes()
-      if (selectedFile.value && !files.value.includes(selectedFile.value)) {
-        selectedFile.value = null
-      }
     } finally {
       if (showLoading) isLoadingFiles.value = false
     }
@@ -307,16 +306,48 @@ export function useNotes() {
     if (filepath) void openFile(filepath, prevFilepath ?? null)
   })
 
+  async function syncListing() {
+    const listing = await git.listRepoContents()
+    files.value = listing.files
+    folders.value = listing.folders
+    if (selectedFile.value && !files.value.includes(selectedFile.value)) {
+      selectedFile.value = null
+    }
+  }
+
   async function createFile(options?: { name?: string; folder?: string }) {
     const filename = await git.createFile(options, '')
-    files.value = await git.listFiles()
+    await syncListing()
     selectedFile.value = filename
     return filename
+  }
+
+  async function createFolder(folderPath: string) {
+    const folder = await git.createFolder(folderPath)
+    await syncListing()
+    return folder
   }
 
   async function moveFile(filepath: string, targetFolder: string) {
     await flush()
     const newPath = await git.moveFile(filepath, targetFolder, content.value)
+
+    skipSave = true
+    if (selectedFile.value === filepath) {
+      selectedFile.value = newPath
+      lastPersistedContent.value = content.value
+    }
+    skipSave = false
+
+    await refreshFiles({ silent: true })
+    queueBackgroundSync({ reload: false })
+    return newPath
+  }
+
+  async function renameFile(filepath: string, newStem: string) {
+    await flush()
+    const newPath = await git.renameFile(filepath, newStem, content.value)
+    if (newPath === filepath) return newPath
 
     skipSave = true
     if (selectedFile.value === filepath) {
@@ -369,6 +400,7 @@ export function useNotes() {
   return {
     ...git,
     files,
+    folders,
     recentNotes,
     selectedFile,
     content,
@@ -383,7 +415,9 @@ export function useNotes() {
     leaveCurrentFile,
     syncNotes,
     createFile,
+    createFolder,
     moveFile,
+    renameFile,
     deleteFile,
   }
 }

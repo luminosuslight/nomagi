@@ -9,9 +9,10 @@ import { ROOT_FOLDER_VALUE } from '@/lib/noteFolders'
 
 const open = defineModel<boolean>({ default: false })
 
-defineProps<{
+const props = defineProps<{
   folders: string[]
   isBusy: boolean
+  initialFolder?: string
 }>()
 
 const emit = defineEmits<{
@@ -28,7 +29,7 @@ const submitLabel = computed(() => (isQuickNote.value ? 'Quick Note' : 'Create')
 
 watch(open, async (isOpen) => {
   if (!isOpen) return
-  folder.value = ROOT_FOLDER_VALUE
+  folder.value = props.initialFolder ?? ROOT_FOLDER_VALUE
   name.value = ''
   await nextTick()
   ;(nameInputRef.value?.$el as HTMLInputElement | undefined)?.focus()

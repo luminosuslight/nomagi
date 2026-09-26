@@ -4,6 +4,7 @@ import {
   QUICK_NOTES_DIR,
   resolveMoveNotePath,
   resolveNewNoteFilename,
+  resolveRenameNotePath,
 } from '@/lib/noteFilenames'
 
 describe('resolveNewNoteFilename', () => {
@@ -50,6 +51,27 @@ describe('resolveNewNoteFilename', () => {
       `${QUICK_NOTES_DIR}/my-note.md`,
     )
   })
+
+  it('creates missing folders from slashes in the name', () => {
+    expect(resolveNewNoteFilename({ name: 'new_folder/my_note' }, [])).toBe('new_folder/my_note.md')
+    expect(resolveNewNoteFilename({ name: 'new_folder/my_note', folder: 'docs' }, [])).toBe(
+      'docs/new_folder/my_note.md',
+    )
+  })
+
+  it('allows a nested selected folder', () => {
+    expect(resolveNewNoteFilename({ name: 'my-note', folder: 'docs/proj' }, [])).toBe(
+      'docs/proj/my-note.md',
+    )
+    expect(resolveNewNoteFilename({ folder: 'docs/proj' }, [])).toBe(
+      `docs/proj/${generateIsoDateFilename()}`,
+    )
+  })
+
+  it('rejects unsafe names', () => {
+    expect(() => resolveNewNoteFilename({ name: '../secret' }, [])).toThrow(/invalid segment/)
+    expect(() => resolveNewNoteFilename({ name: 'new_folder/' }, [])).toThrow(/slash/)
+  })
 })
 
 describe('resolveMoveNotePath', () => {
@@ -74,5 +96,39 @@ describe('resolveMoveNotePath', () => {
     expect(
       resolveMoveNotePath('docs/a.md', QUICK_NOTES_DIR, ['docs/a.md', `${QUICK_NOTES_DIR}/a.md`]),
     ).toBe(`${QUICK_NOTES_DIR}/a-2.md`)
+  })
+
+  it('moves into a nested folder', () => {
+    expect(resolveMoveNotePath('a.md', 'docs/proj', ['a.md'])).toBe('docs/proj/a.md')
+  })
+})
+
+describe('resolveRenameNotePath', () => {
+  it('keeps the parent folder and markdown extension', () => {
+    expect(resolveRenameNotePath('docs/proj/a.md', 'renamed', ['docs/proj/a.md'])).toBe(
+      'docs/proj/renamed.md',
+    )
+  })
+
+  it('preserves a pdf extension', () => {
+    expect(resolveRenameNotePath('docs/scan.pdf', 'renamed', ['docs/scan.pdf'])).toBe(
+      'docs/renamed.pdf',
+    )
+    expect(resolveRenameNotePath('docs/scan.pdf', 'renamed.pdf', ['docs/scan.pdf'])).toBe(
+      'docs/renamed.pdf',
+    )
+  })
+
+  it('returns the same path when the stem is unchanged', () => {
+    expect(resolveRenameNotePath('docs/a.md', 'a', ['docs/a.md'])).toBe('docs/a.md')
+  })
+
+  it('rejects collisions and path separators', () => {
+    expect(() => resolveRenameNotePath('docs/a.md', 'b', ['docs/a.md', 'docs/b.md'])).toThrow(
+      /already exists/,
+    )
+    expect(() => resolveRenameNotePath('docs/a.md', 'sub/b', ['docs/a.md'])).toThrow(
+      /path separators/,
+    )
   })
 })

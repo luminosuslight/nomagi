@@ -1,4 +1,5 @@
 import { noteBasename } from '@/lib/noteDisplay'
+import { assertSafeFolderPath, assertSafeRelativePath, noteParentFolder } from '@/lib/noteFolders'
 
 export const QUICK_NOTES_DIR = 'quick_notes'
 
@@ -61,16 +62,23 @@ function joinFolderPath(folder: string, filename: string): string {
   return folder ? `${folder}/${filename}` : filename
 }
 
+function noteExtension(filepath: string): '.md' | '.pdf' {
+  return filepath.toLowerCase().endsWith('.pdf') ? '.pdf' : '.md'
+}
+
+function withNoteExtension(stem: string, ext: '.md' | '.pdf'): string {
+  if (ext === '.pdf') {
+    return stem.toLowerCase().endsWith('.pdf') ? stem : `${stem}.pdf`
+  }
+  return stem.endsWith('.md') ? stem : `${stem}.md`
+}
+
 export function resolveNewNoteFilename(
   options: ResolveNewNoteOptions | undefined,
   existingFiles: string[],
 ): string {
-  const folder = options?.folder?.trim() ?? ''
+  const folder = assertSafeFolderPath(options?.folder ?? '')
   const trimmed = options?.name?.trim() ?? ''
-
-  if (folder.includes('/') || folder.includes('\\')) {
-    throw new Error('Folder must not contain path separators')
-  }
 
   if (!trimmed) {
     const targetFolder = folder || QUICK_NOTES_DIR
@@ -78,11 +86,12 @@ export function resolveNewNoteFilename(
     return joinFolderPath(targetFolder, basename)
   }
 
-  if (!folder) {
-    return normalizeMarkdownFilename(trimmed)
-  }
-
-  return joinFolderPath(folder, normalizeMarkdownFilename(trimmed))
+  const namePath = assertSafeRelativePath(trimmed)
+  const slash = namePath.lastIndexOf('/')
+  const extraFolders = slash === -1 ? '' : namePath.slice(0, slash)
+  const basename = normalizeMarkdownFilename(slash === -1 ? namePath : namePath.slice(slash + 1))
+  const targetFolder = [folder, extraFolders].filter(Boolean).join('/')
+  return joinFolderPath(targetFolder, basename)
 }
 
 function uniqueBasenameInFolder(basename: string, existingBasenames: string[]): string {
@@ -103,10 +112,7 @@ export function resolveMoveNotePath(
   targetFolder: string,
   existingFiles: string[],
 ): string {
-  const folder = targetFolder.trim()
-  if (folder.includes('/') || folder.includes('\\')) {
-    throw new Error('Folder must not contain path separators')
-  }
+  const folder = assertSafeFolderPath(targetFolder)
 
   const basename = noteBasename(sourcePath)
   const targetPath = folder ? joinFolderPath(folder, basename) : basename
@@ -117,4 +123,27 @@ export function resolveMoveNotePath(
   const uniqueBasename = uniqueBasenameInFolder(basename, existingBasenamesInFolder(others, folder))
 
   return folder ? joinFolderPath(folder, uniqueBasename) : uniqueBasename
+}
+
+/** New path when renaming a note in place. `newStem` is the title without a folder. */
+export function resolveRenameNotePath(
+  sourcePath: string,
+  newStem: string,
+  existingFiles: string[],
+): string {
+  const stem = newStem.trim()
+  if (!stem) throw new Error('Filename is required')
+  if (stem.includes('/') || stem.includes('\\')) {
+    throw new Error('Filename must not contain path separators')
+  }
+  if (stem === '.' || stem === '..') {
+    throw new Error('Path contains an invalid segment')
+  }
+
+  const filename = withNoteExtension(stem, noteExtension(sourcePath))
+  const target = joinFolderPath(noteParentFolder(sourcePath), filename)
+  if (target !== sourcePath && existingFiles.includes(target)) {
+    throw new Error('File already exists')
+  }
+  return target
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, provide, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, provide, ref, watch } from 'vue'
 import { ArrowLeft, Code2, PenLine, Plus, Trash2 } from 'lucide-vue-next'
 import { MilkdownProvider } from '@milkdown/vue'
 import MarkdownCodeEditor from '@/components/MarkdownCodeEditor.vue'
@@ -21,6 +21,7 @@ const props = defineProps<{
   canCreateNote?: boolean
   deleteDisabled?: boolean
   moveDisabled?: boolean
+  renameDisabled?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -29,6 +30,7 @@ const emit = defineEmits<{
   newNote: []
   move: []
   delete: []
+  rename: [name: string]
 }>()
 
 type EditorMode = 'wysiwyg' | 'code'
@@ -39,6 +41,9 @@ const displayName = computed(() => (props.filename ? listDisplayName(props.filen
 const editorPanel = ref<HTMLElement | null>(null)
 const drawingEditing = ref(false)
 const editorMode = ref<EditorMode>('wysiwyg')
+const renaming = ref(false)
+const renameDraft = ref('')
+const renameInputRef = ref<HTMLInputElement | null>(null)
 const milkdownEditorRef = ref<InstanceType<typeof MilkdownEditor> | null>(null)
 /** Milkdown pushed at least one user-driven update for the open file. */
 const wysiwygUserEdited = ref(false)
@@ -51,8 +56,32 @@ watch(
   () => {
     editorMode.value = 'wysiwyg'
     wysiwygUserEdited.value = false
+    renaming.value = false
   },
 )
+
+function startRename() {
+  if (!props.filename || props.renameDisabled) return
+  renameDraft.value = displayName.value ?? ''
+  renaming.value = true
+  void nextTick(() => {
+    renameInputRef.value?.focus()
+    renameInputRef.value?.select()
+  })
+}
+
+function cancelRename() {
+  renaming.value = false
+}
+
+function commitRename() {
+  if (!renaming.value || !props.filename) return
+  const next = renameDraft.value.trim()
+  const current = displayName.value ?? ''
+  renaming.value = false
+  if (!next || next === current) return
+  emit('rename', next)
+}
 
 function onWysiwygUpdate(value: string) {
   wysiwygUserEdited.value = true
@@ -95,9 +124,32 @@ function setEditorMode(mode: EditorMode) {
       >
         <ArrowLeft class="size-4" />
       </Button>
-      <h2 class="min-w-0 flex-1 truncate text-sm font-medium">
-        {{ displayName ?? 'Select a note' }}
+      <h2
+        v-if="!filename"
+        class="min-w-0 flex-1 truncate text-sm font-medium"
+      >
+        Select a note
       </h2>
+      <input
+        v-else-if="renaming"
+        ref="renameInputRef"
+        v-model="renameDraft"
+        type="text"
+        class="min-w-0 flex-1 border-0 bg-transparent p-0 text-base font-medium outline-none"
+        aria-label="Rename note"
+        @keydown.enter.prevent="commitRename"
+        @keydown.escape.prevent="cancelRename"
+        @blur="commitRename"
+      >
+      <button
+        v-else
+        type="button"
+        class="min-w-0 flex-1 truncate border-0 bg-transparent p-0 text-left text-sm font-medium disabled:cursor-default"
+        :disabled="renameDisabled"
+        @click="startRename"
+      >
+        {{ displayName }}
+      </button>
       <div
         v-if="filename && !isPdf"
         class="flex shrink-0 items-center rounded-md border p-0.5"
