@@ -27,7 +27,7 @@ export function prepareBareFixture() {
     rmSync(BARE_REPO, { recursive: true, force: true })
   }
 
-  git(['init', '--bare', 'notes-sync.git'], FIXTURES_DIR)
+  git(['init', '--bare', '--initial-branch=main', 'notes-sync.git'], FIXTURES_DIR)
 
   const work = mkdtempSync(join(tmpdir(), 'nomagi-fixture-'))
   try {
@@ -107,6 +107,8 @@ export function changeRemoteFixture(
   const work = mkdtempSync(join(tmpdir(), 'nomagi-remote-'))
   try {
     git(['clone', '--branch', 'main', BARE_REPO, '.'], work)
+    git(['config', 'user.email', 'notes@test'], work)
+    git(['config', 'user.name', 'Notes'], work)
     change((...args) => git(args, work), work)
     git(['push', 'origin', 'main'], work)
   } finally {
