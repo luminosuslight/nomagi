@@ -3,37 +3,59 @@ import { assertSafeFolderPath, assertSafeRelativePath, noteParentFolder } from '
 
 export const QUICK_NOTES_DIR = 'quick_notes'
 
-export function normalizeMarkdownFilename(name: string): string {
+export type NoteKind = 'markdown' | 'canvas'
+
+type NoteExtension = '.md' | '.pdf' | '.canvas'
+
+const KIND_EXTENSIONS: Record<NoteKind, NoteExtension> = {
+  markdown: '.md',
+  canvas: '.canvas',
+}
+
+function hasExtension(name: string, ext: NoteExtension): boolean {
+  return ext === '.md' ? name.endsWith(ext) : name.toLowerCase().endsWith(ext)
+}
+
+function normalizeNoteFilename(name: string, ext: NoteExtension): string {
   const trimmed = name.trim()
   if (!trimmed) throw new Error('Filename is required')
   if (trimmed.includes('/') || trimmed.includes('\\')) {
     throw new Error('Filename must not contain path separators')
   }
-  return trimmed.endsWith('.md') ? trimmed : `${trimmed}.md`
+  return hasExtension(trimmed, ext) ? trimmed : `${trimmed}${ext}`
+}
+
+export function normalizeMarkdownFilename(name: string): string {
+  return normalizeNoteFilename(name, '.md')
 }
 
 function padTwo(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-export function generateIsoDateFilename(now = new Date()): string {
+export function generateIsoDateFilename(now = new Date(), ext: string = '.md'): string {
   const y = now.getFullYear()
   const m = padTwo(now.getMonth() + 1)
   const d = padTwo(now.getDate())
   const h = padTwo(now.getHours())
   const min = padTwo(now.getMinutes())
   const s = padTwo(now.getSeconds())
-  return `${y}-${m}-${d}T${h}-${min}-${s}.md`
+  return `${y}-${m}-${d}T${h}-${min}-${s}${ext}`
 }
 
-export function uniqueIsoDateFilename(existingFiles: Iterable<string>, now = new Date()): string {
+export function uniqueIsoDateFilename(
+  existingFiles: Iterable<string>,
+  now = new Date(),
+  ext: string = '.md',
+): string {
   const existing = new Set(existingFiles)
-  const base = generateIsoDateFilename(now)
+  const base = generateIsoDateFilename(now, ext)
   if (!existing.has(base)) return base
 
+  const stem = base.slice(0, -ext.length)
   let suffix = 2
   while (true) {
-    const candidate = base.replace(/\.md$/, `-${suffix}.md`)
+    const candidate = `${stem}-${suffix}${ext}`
     if (!existing.has(candidate)) return candidate
     suffix++
   }
@@ -46,6 +68,8 @@ export type ResolveNewNoteOptions = {
    * untitled ISO notes in quick_notes.
    */
   folder?: string
+  /** Defaults to markdown. */
+  kind?: NoteKind
 }
 
 function existingBasenamesInFolder(existingFiles: string[], folder: string): string[] {
@@ -62,15 +86,11 @@ function joinFolderPath(folder: string, filename: string): string {
   return folder ? `${folder}/${filename}` : filename
 }
 
-function noteExtension(filepath: string): '.md' | '.pdf' {
-  return filepath.toLowerCase().endsWith('.pdf') ? '.pdf' : '.md'
-}
-
-function withNoteExtension(stem: string, ext: '.md' | '.pdf'): string {
-  if (ext === '.pdf') {
-    return stem.toLowerCase().endsWith('.pdf') ? stem : `${stem}.pdf`
-  }
-  return stem.endsWith('.md') ? stem : `${stem}.md`
+function noteExtension(filepath: string): NoteExtension {
+  const lower = filepath.toLowerCase()
+  if (lower.endsWith('.pdf')) return '.pdf'
+  if (lower.endsWith('.canvas')) return '.canvas'
+  return '.md'
 }
 
 export function resolveNewNoteFilename(
@@ -79,17 +99,22 @@ export function resolveNewNoteFilename(
 ): string {
   const folder = assertSafeFolderPath(options?.folder ?? '')
   const trimmed = options?.name?.trim() ?? ''
+  const ext = KIND_EXTENSIONS[options?.kind ?? 'markdown']
 
   if (!trimmed) {
     const targetFolder = folder || QUICK_NOTES_DIR
-    const basename = uniqueIsoDateFilename(existingBasenamesInFolder(existingFiles, targetFolder))
+    const basename = uniqueIsoDateFilename(
+      existingBasenamesInFolder(existingFiles, targetFolder),
+      new Date(),
+      ext,
+    )
     return joinFolderPath(targetFolder, basename)
   }
 
   const namePath = assertSafeRelativePath(trimmed)
   const slash = namePath.lastIndexOf('/')
   const extraFolders = slash === -1 ? '' : namePath.slice(0, slash)
-  const basename = normalizeMarkdownFilename(slash === -1 ? namePath : namePath.slice(slash + 1))
+  const basename = normalizeNoteFilename(slash === -1 ? namePath : namePath.slice(slash + 1), ext)
   const targetFolder = [folder, extraFolders].filter(Boolean).join('/')
   return joinFolderPath(targetFolder, basename)
 }
@@ -97,10 +122,11 @@ export function resolveNewNoteFilename(
 function uniqueBasenameInFolder(basename: string, existingBasenames: string[]): string {
   if (!existingBasenames.includes(basename)) return basename
 
-  const stem = basename.replace(/\.md$/, '')
+  const ext = noteExtension(basename)
+  const stem = hasExtension(basename, ext) ? basename.slice(0, -ext.length) : basename
   let suffix = 2
   while (true) {
-    const candidate = `${stem}-${suffix}.md`
+    const candidate = `${stem}-${suffix}${ext}`
     if (!existingBasenames.includes(candidate)) return candidate
     suffix++
   }
@@ -140,7 +166,8 @@ export function resolveRenameNotePath(
     throw new Error('Path contains an invalid segment')
   }
 
-  const filename = withNoteExtension(stem, noteExtension(sourcePath))
+  const ext = noteExtension(sourcePath)
+  const filename = hasExtension(stem, ext) ? stem : `${stem}${ext}`
   const target = joinFolderPath(noteParentFolder(sourcePath), filename)
   if (target !== sourcePath && existingFiles.includes(target)) {
     throw new Error('File already exists')

@@ -3,6 +3,7 @@ import { editorViewCtx } from '@milkdown/core'
 import { inject, markRaw, onUnmounted, provide, ref, shallowRef, watch } from 'vue'
 import { Milkdown, useEditor } from '@milkdown/vue'
 import { Crepe } from '@milkdown/crepe'
+import { Selection } from '@milkdown/kit/prose/state'
 import { replaceAll } from '@milkdown/kit/utils'
 import { drawingEditingKey, editorOverlayRootKey } from '@/lib/editorOverlay'
 import {
@@ -39,6 +40,8 @@ const props = defineProps<{
   modelValue: string
   placeholder?: string
   disabled?: boolean
+  /** Read-only without the disabled styling (rendered preview). */
+  readonly?: boolean
   class?: string
   /** Repo path of the open note; relative image paths resolve against it. */
   filename?: string | null
@@ -172,7 +175,7 @@ const { loading } = useEditor((root) => {
     })
   })
 
-  if (props.disabled) {
+  if (props.disabled || props.readonly) {
     crepe.setReadonly(true)
   }
 
@@ -195,7 +198,7 @@ watch(
 function syncEditorReadonly() {
   const crepe = crepeRef.value
   if (!crepe || loading.value) return
-  crepe.setReadonly(!!props.disabled || drawingEditing.value)
+  crepe.setReadonly(!!props.disabled || !!props.readonly || drawingEditing.value)
 }
 
 function blurProseMirror() {
@@ -212,13 +215,41 @@ watch(drawingEditing, (editing) => {
   if (editing) blurProseMirror()
 })
 
-watch(() => props.disabled, syncEditorReadonly)
+type FocusOptions = { atEnd?: boolean }
+
+/** Focus requested before Crepe finished creating the editor. */
+let pendingFocus: FocusOptions | null = null
+
+watch(() => [props.disabled, props.readonly], syncEditorReadonly)
+watch(loading, (isLoading) => {
+  syncEditorReadonly()
+  if (isLoading || !pendingFocus) return
+  const options = pendingFocus
+  pendingFocus = null
+  focus(options)
+})
 
 function getMarkdown() {
   return crepeRef.value?.getMarkdown() ?? props.modelValue
 }
 
-defineExpose({ getMarkdown })
+function focus(options: FocusOptions = {}) {
+  const crepe = crepeRef.value
+  if (!crepe || loading.value) {
+    pendingFocus = options
+    return
+  }
+  enableParentSync()
+  crepe.editor.action((ctx) => {
+    const view = ctx.get(editorViewCtx)
+    if (options.atEnd) {
+      view.dispatch(view.state.tr.setSelection(Selection.atEnd(view.state.doc)))
+    }
+    view.focus()
+  })
+}
+
+defineExpose({ getMarkdown, focus })
 </script>
 
 <template>

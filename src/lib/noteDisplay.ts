@@ -1,4 +1,4 @@
-const ISO_DATE_FILENAME = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(-\d+)?\.md$/
+const ISO_DATE_FILENAME = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(-\d+)?\.(md|canvas)$/
 
 /** Markdown list marker: dash, asterisk, or plus. */
 const LIST_MARKER = '(?:[-*+])'
@@ -12,21 +12,22 @@ export function isIsoDateFilename(name: string): boolean {
   return ISO_DATE_FILENAME.test(name)
 }
 
-export function displayFilename(filepath: string): string | null {
-  const basename = noteBasename(filepath)
-  if (isIsoDateFilename(basename)) return null
+function stripNoteExtension(basename: string): string {
   if (basename.endsWith('.md')) return basename.slice(0, -3)
-  if (basename.toLowerCase().endsWith('.pdf')) return basename.slice(0, -4)
+  const lower = basename.toLowerCase()
+  if (lower.endsWith('.pdf')) return basename.slice(0, -4)
+  if (lower.endsWith('.canvas')) return basename.slice(0, -7)
   return basename
 }
 
-export function listDisplayName(filepath: string): string {
-  const named = displayFilename(filepath)
-  if (named) return named
+export function displayFilename(filepath: string): string | null {
   const basename = noteBasename(filepath)
-  if (basename.endsWith('.md')) return basename.slice(0, -3)
-  if (basename.toLowerCase().endsWith('.pdf')) return basename.slice(0, -4)
-  return basename
+  if (isIsoDateFilename(basename)) return null
+  return stripNoteExtension(basename)
+}
+
+export function listDisplayName(filepath: string): string {
+  return displayFilename(filepath) ?? stripNoteExtension(noteBasename(filepath))
 }
 
 /** Image alt text is often a Crepe resize ratio (e.g. `0.50`), so it is not shown in previews. */

@@ -5,10 +5,11 @@ import { MilkdownProvider } from '@milkdown/vue'
 import MarkdownCodeEditor from '@/components/MarkdownCodeEditor.vue'
 import MilkdownEditor from '@/components/MilkdownEditor.vue'
 const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
+const CanvasEditor = defineAsyncComponent(() => import('@/components/canvas/CanvasEditor.vue'))
 import Button from '@/components/ui/Button.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import { drawingEditingKey, editorOverlayRootKey } from '@/lib/editorOverlay'
-import { isPdfFile } from '@/lib/fileTypes'
+import { isCanvasFile, isPdfFile } from '@/lib/fileTypes'
 import { listDisplayName } from '@/lib/noteDisplay'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +17,9 @@ const props = defineProps<{
   filename: string | null
   modelValue: string
   pdfData?: Uint8Array | null
+  files?: string[]
+  readFile?: (filepath: string) => Promise<string>
+  writeFile?: (filepath: string, content: string) => Promise<void>
   readFileBinary?: (filepath: string) => Promise<Uint8Array>
   createBinaryFile?: (filepath: string, bytes: Uint8Array) => Promise<string>
   isLoading: boolean
@@ -33,11 +37,13 @@ const emit = defineEmits<{
   move: []
   delete: []
   rename: [name: string]
+  openFile: [filepath: string]
 }>()
 
 type EditorMode = 'wysiwyg' | 'code'
 
 const isPdf = computed(() => Boolean(props.filename && isPdfFile(props.filename)))
+const isCanvas = computed(() => Boolean(props.filename && isCanvasFile(props.filename)))
 const displayName = computed(() => (props.filename ? listDisplayName(props.filename) : null))
 
 const editorPanel = ref<HTMLElement | null>(null)
@@ -244,6 +250,19 @@ function setEditorMode(mode: EditorMode) {
         v-else-if="isPdf"
         :key="`${filename}-pdf`"
         :data="pdfData ?? null"
+      />
+      <CanvasEditor
+        v-else-if="isCanvas && readFile && writeFile"
+        :key="`${filename}-canvas`"
+        :model-value="modelValue"
+        :filename="filename"
+        :files="files ?? []"
+        :read-file="readFile"
+        :write-file="writeFile"
+        :read-file-binary="readFileBinary"
+        :create-binary-file="createBinaryFile"
+        @update:model-value="$emit('update:modelValue', $event)"
+        @open-file="$emit('openFile', $event)"
       />
       <MilkdownProvider v-else>
         <MilkdownEditor

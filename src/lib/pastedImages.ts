@@ -26,7 +26,7 @@ export function pastedImageExtension(mimeType: string): string | null {
 export function pastedImagePath(mimeType: string, now = new Date()): string {
   const extension = pastedImageExtension(mimeType)
   if (!extension) throw new Error(`Unsupported image type: ${mimeType || 'unknown'}`)
-  return `${PASTED_IMAGES_DIR}/${generateIsoDateFilename(now).replace(/\.md$/, `.${extension}`)}`
+  return `${PASTED_IMAGES_DIR}/${generateIsoDateFilename(now, `.${extension}`)}`
 }
 
 /** `dir/name.png` → `dir/name-2.png` */

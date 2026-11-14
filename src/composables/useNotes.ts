@@ -2,7 +2,9 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGit } from './useGit'
 import { errorMessage, reportError } from '@/lib/errors'
 import { previewFromContent } from '@/lib/noteDisplay'
-import { isNoteFile, isPdfFile } from '@/lib/fileTypes'
+import { isCanvasFile, isNoteFile, isPdfFile } from '@/lib/fileTypes'
+import { canvasPreviewFromContent, emptyCanvas, serializeCanvas } from '@/lib/canvas/jsonCanvas'
+import type { ResolveNewNoteOptions } from '@/lib/noteFilenames'
 import type { RecentNote } from './useGit'
 
 type RecentNoteWithPreview = RecentNote & { preview: string }
@@ -170,7 +172,7 @@ export function useNotes() {
   async function previewForNote(filepath: string, knownContent?: string): Promise<string> {
     if (isPdfFile(filepath)) return 'PDF'
     const text = knownContent ?? (await git.readFile(filepath))
-    return previewFromContent(text)
+    return isCanvasFile(filepath) ? canvasPreviewFromContent(text) : previewFromContent(text)
   }
 
   async function refreshRecentNotes() {
@@ -316,8 +318,9 @@ export function useNotes() {
     }
   }
 
-  async function createFile(options?: { name?: string; folder?: string }) {
-    const filename = await git.createFile(options, '')
+  async function createFile(options?: ResolveNewNoteOptions) {
+    const initialContent = options?.kind === 'canvas' ? serializeCanvas(emptyCanvas()) : ''
+    const filename = await git.createFile(options, initialContent)
     await syncListing()
     selectedFile.value = filename
     return filename

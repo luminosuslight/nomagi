@@ -68,6 +68,16 @@ describe('resolveNewNoteFilename', () => {
     )
   })
 
+  it('uses the .canvas extension for whiteboards', () => {
+    expect(resolveNewNoteFilename({ name: 'plan', kind: 'canvas' }, [])).toBe('plan.canvas')
+    expect(resolveNewNoteFilename({ name: 'plan.canvas', kind: 'canvas' }, [])).toBe('plan.canvas')
+    const iso = generateIsoDateFilename(new Date(), '.canvas')
+    expect(iso).toMatch(/\.canvas$/)
+    expect(resolveNewNoteFilename({ kind: 'canvas' }, [`${QUICK_NOTES_DIR}/${iso}`])).toBe(
+      `${QUICK_NOTES_DIR}/${iso.replace(/\.canvas$/, '-2.canvas')}`,
+    )
+  })
+
   it('rejects unsafe names', () => {
     expect(() => resolveNewNoteFilename({ name: '../secret' }, [])).toThrow(/invalid segment/)
     expect(() => resolveNewNoteFilename({ name: 'new_folder/' }, [])).toThrow(/slash/)
@@ -116,6 +126,15 @@ describe('resolveRenameNotePath', () => {
     )
     expect(resolveRenameNotePath('docs/scan.pdf', 'renamed.pdf', ['docs/scan.pdf'])).toBe(
       'docs/renamed.pdf',
+    )
+  })
+
+  it('preserves a canvas extension', () => {
+    expect(resolveRenameNotePath('boards/a.canvas', 'b', ['boards/a.canvas'])).toBe(
+      'boards/b.canvas',
+    )
+    expect(resolveMoveNotePath('a.canvas', 'boards', ['a.canvas', 'boards/a.canvas'])).toBe(
+      'boards/a-2.canvas',
     )
   })
 

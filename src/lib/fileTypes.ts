@@ -6,6 +6,10 @@ export function isPdfFile(filepath: string): boolean {
   return filepath.toLowerCase().endsWith('.pdf')
 }
 
+export function isCanvasFile(filepath: string): boolean {
+  return filepath.toLowerCase().endsWith('.canvas')
+}
+
 export function isNoteFile(filepath: string): boolean {
-  return isMarkdownFile(filepath) || isPdfFile(filepath)
+  return isMarkdownFile(filepath) || isPdfFile(filepath) || isCanvasFile(filepath)
 }

@@ -11,6 +11,7 @@ import {
 import { errorMessage, reportError } from '@/lib/errors'
 import { formatRelativeTime } from '@/lib/formatRelativeTime'
 import { listDisplayName } from '@/lib/noteDisplay'
+import type { NoteKind } from '@/lib/noteFilenames'
 import { resolveNewFolderPath } from '@/lib/noteFolders'
 import { Plus, Settings } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
@@ -70,6 +71,7 @@ const {
   deleteFile,
   readFile,
   readFileBinary,
+  writeFile,
   createBinaryFile,
 } = useNotes()
 
@@ -163,11 +165,12 @@ async function handleCreateFolder(payload: { name: string; folder: string }) {
   }
 }
 
-async function handleCreateNote(payload: { name?: string; folder: string }) {
+async function handleCreateNote(payload: { name?: string; folder: string; kind: NoteKind }) {
   try {
     const filename = await createFile({
       name: payload.name,
       folder: payload.folder,
+      kind: payload.kind,
     })
     mobileView.value = 'editor'
     toast.success(`Created ${filename}`)
@@ -362,6 +365,9 @@ onUnmounted(() => {
       <Editor
         v-model="content"
         :pdf-data="pdfContent"
+        :files="files"
+        :read-file="readFile"
+        :write-file="writeFile"
         :read-file-binary="readFileBinary"
         :create-binary-file="createBinaryFile"
         :filename="selectedFile"
@@ -376,6 +382,7 @@ onUnmounted(() => {
         @move="handleEditorMove"
         @rename="handleRename"
         @delete="handleEditorDelete"
+        @open-file="selectFile"
       />
     </main>
 

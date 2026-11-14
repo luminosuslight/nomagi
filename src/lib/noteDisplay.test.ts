@@ -21,6 +21,11 @@ describe('listDisplayName', () => {
   it('strips .pdf extension', () => {
     expect(listDisplayName('docs/paper.pdf')).toBe('paper')
   })
+
+  it('strips .canvas extension', () => {
+    expect(listDisplayName('boards/plan.canvas')).toBe('plan')
+    expect(listDisplayName('quick_notes/2026-05-31T12-30-45.canvas')).toBe('2026-05-31T12-30-45')
+  })
 })
 
 describe('stripMarkdownForPreview', () => {

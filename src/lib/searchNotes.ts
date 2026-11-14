@@ -1,5 +1,6 @@
 import { previewFromContent } from '@/lib/noteDisplay'
-import { isPdfFile } from '@/lib/fileTypes'
+import { canvasPlainTextFromContent, canvasPreviewFromContent } from '@/lib/canvas/jsonCanvas'
+import { isCanvasFile, isPdfFile } from '@/lib/fileTypes'
 
 export type SearchResult = {
   filepath: string
@@ -42,14 +43,18 @@ export async function searchNotes(
         return { filepath, matchCount: filenameMatches, preview: 'PDF' }
       }
 
-      const content = await readFile(filepath)
+      const raw = await readFile(filepath)
+      const content = isCanvasFile(filepath) ? canvasPlainTextFromContent(raw) : raw
       const contentMatches = countOccurrences(content, normalizedQuery)
       const filenameMatches = filepath.toLowerCase().includes(lowerQuery) ? 1 : 0
       const matchCount = contentMatches + filenameMatches
 
       if (matchCount === 0) return null
 
-      return { filepath, matchCount, preview: previewFromContent(content) }
+      const preview = isCanvasFile(filepath)
+        ? canvasPreviewFromContent(raw)
+        : previewFromContent(content)
+      return { filepath, matchCount, preview }
     }),
   )
 
