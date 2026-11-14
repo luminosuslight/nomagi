@@ -1,7 +1,7 @@
 import git, { Errors } from 'isomorphic-git'
 import http from 'isomorphic-git/http/node'
 import { createFsFromVolume, Volume } from 'memfs'
-import { notesMergeDriver } from '@/lib/notesMergeDriver'
+import { mergeNotes, withUnmergedIndexRecovery } from '@/lib/notesMerge'
 
 const REPO_DIR = '/repo'
 
@@ -32,6 +32,7 @@ export function createGitHarness(repoUrl: string) {
       dir: REPO_DIR,
       url: repoUrl,
       singleBranch: true,
+      depth: 10,
     })
 
     if (!fetchHead) return
@@ -39,18 +40,27 @@ export function createGitHarness(repoUrl: string) {
     const head = await resolveHeadOid()
     if (fetchHead === head) return
 
-    await git.merge({
-      fs,
-      dir: REPO_DIR,
-      ours: branch,
-      theirs: fetchHead,
-      fastForward: true,
-      fastForwardOnly: false,
-      abortOnConflict: false,
-      mergeDriver: notesMergeDriver,
-      author,
-      committer: author,
-    })
+    await withUnmergedIndexRecovery(fs, REPO_DIR, () =>
+      mergeNotes({
+        fs,
+        dir: REPO_DIR,
+        cache: {},
+        branch,
+        theirs: fetchHead,
+        author,
+        deepen: async (depth) => {
+          await git.fetch({
+            fs,
+            http,
+            dir: REPO_DIR,
+            url: repoUrl,
+            singleBranch: true,
+            depth,
+            relative: true,
+          })
+        },
+      }),
+    )
 
     await git.checkout({ fs, dir: REPO_DIR, ref: branch, force: checkoutForce })
   }
@@ -77,6 +87,9 @@ export function createGitHarness(repoUrl: string) {
     },
 
     async writeFile(filepath: string, content: string) {
+      const slash = filepath.lastIndexOf('/')
+      if (slash !== -1)
+        await pfs.mkdir(`${REPO_DIR}/${filepath.slice(0, slash)}`, { recursive: true })
       await pfs.writeFile(`${REPO_DIR}/${filepath}`, content, { encoding: 'utf8' })
       await git.add({ fs, dir: REPO_DIR, filepath })
       await git.commit({
@@ -85,6 +98,18 @@ export function createGitHarness(repoUrl: string) {
         message: `update ${filepath}`,
         author,
       })
+    },
+
+    async renameFile(filepath: string, newPath: string) {
+      const content = await pfs.readFile(`${REPO_DIR}/${filepath}`)
+      const slash = newPath.lastIndexOf('/')
+      if (slash !== -1)
+        await pfs.mkdir(`${REPO_DIR}/${newPath.slice(0, slash)}`, { recursive: true })
+      await pfs.writeFile(`${REPO_DIR}/${newPath}`, content)
+      await pfs.unlink(`${REPO_DIR}/${filepath}`)
+      await git.updateIndex({ fs, dir: REPO_DIR, filepath, remove: true })
+      await git.add({ fs, dir: REPO_DIR, filepath: newPath })
+      await git.commit({ fs, dir: REPO_DIR, message: `rename ${filepath}`, author })
     },
 
     async readFile(filepath: string): Promise<string> {

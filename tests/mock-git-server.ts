@@ -100,16 +100,28 @@ export function resetRemoteToBase() {
   prepareBareFixture()
 }
 
-/** Add a divergent commit on the bare fixture (visible to isomorphic-git fetch). */
-export function pushRemoteNoteToFixture(filepath: string, content: string) {
+/** Run git commands in a clone of the bare fixture, then push (visible to isomorphic-git fetch). */
+export function changeRemoteFixture(
+  change: (run: (...args: string[]) => void, work: string) => void,
+) {
   const work = mkdtempSync(join(tmpdir(), 'nomagi-remote-'))
   try {
     git(['clone', '--branch', 'main', BARE_REPO, '.'], work)
-    writeFileSync(join(work, filepath), content)
-    git(['add', filepath], work)
-    git(['commit', '-m', 'remote'], work)
+    change((...args) => git(args, work), work)
     git(['push', 'origin', 'main'], work)
   } finally {
     rmSync(work, { recursive: true, force: true })
   }
+}
+
+/** Add divergent commits (one per content) on the bare fixture (visible to isomorphic-git fetch). */
+export function pushRemoteNoteToFixture(filepath: string, ...contents: string[]) {
+  changeRemoteFixture((run, work) => {
+    mkdirSync(dirname(join(work, filepath)), { recursive: true })
+    for (const content of contents) {
+      writeFileSync(join(work, filepath), content)
+      run('add', filepath)
+      run('commit', '-m', 'remote')
+    }
+  })
 }

@@ -6,7 +6,7 @@ import { ensureBrowserStorage, withStorageErrors } from '@/lib/browserStorage'
 import { errorMessage, reportError } from '@/lib/errors'
 import { confirmDialog } from '@/composables/useConfirmDialog'
 import { isMissingGitObjectError } from '@/lib/gitRecovery'
-import { notesMergeDriver } from '@/lib/notesMergeDriver'
+import { mergeNotes, withUnmergedIndexRecovery } from '@/lib/notesMerge'
 import { corsProxyForRepo, loadCorsProxySetting } from '@/lib/gitCorsProxy'
 import {
   resolveMoveNotePath,
@@ -382,6 +382,10 @@ async function refreshCommitState(cache: object = {}) {
   }
 }
 
+function commit(args: Omit<Parameters<typeof git.commit>[0], 'fs' | 'dir'>) {
+  return withUnmergedIndexRecovery(fs, REPO_DIR, () => git.commit({ fs, dir: REPO_DIR, ...args }))
+}
+
 async function shouldAmendCommit(): Promise<boolean> {
   if (!lastLocalCommitAt) return false
   if (Date.now() - lastLocalCommitAt > COMMIT_AMEND_WINDOW_MS) return false
@@ -482,22 +486,22 @@ export function useGit() {
       const head = await resolveHeadOid()
       if (fetchHead === head) return
 
-      await git.merge({
-        fs,
-        dir: REPO_DIR,
-        ours: branch,
-        theirs: fetchHead,
-        fastForward: true,
-        fastForwardOnly: false,
-        abortOnConflict: false,
-        mergeDriver: notesMergeDriver,
-        author: settings.author,
-        committer: settings.author,
-        cache,
-      })
+      await withUnmergedIndexRecovery(fs, REPO_DIR, () =>
+        mergeNotes({
+          fs,
+          dir: REPO_DIR,
+          cache,
+          branch,
+          theirs: fetchHead,
+          author: settings.author,
+          deepen: async (depth) => {
+            await git.fetch({ ...remoteGitOptions(settings), cache, depth, relative: true })
+          },
+        }),
+      )
 
       // Merge updates HEAD/index; workdir can still hold pre-merge blobs. force applies
-      // the merged tree (notesMergeDriver already combined local + remote).
+      // the merged tree (mergeNotes already combined local + remote).
       await git.checkout({ fs, dir: REPO_DIR, ref: branch, force: true, cache })
     })
   }
@@ -562,9 +566,7 @@ export function useGit() {
       cache = {}
       await git.add({ fs, dir: REPO_DIR, filepath, cache })
       amended = await shouldAmendCommit()
-      await git.commit({
-        fs,
-        dir: REPO_DIR,
+      await commit({
         message: message ?? `update ${filepath}`,
         author: settings.author,
         amend: amended,
@@ -672,9 +674,7 @@ export function useGit() {
       await git.updateIndex({ fs, dir: REPO_DIR, filepath, remove: true })
       await git.add({ fs, dir: REPO_DIR, filepath: newPath })
       amended = await shouldAmendCommit()
-      await git.commit({
-        fs,
-        dir: REPO_DIR,
+      await commit({
         message,
         author: settings.author,
         amend: amended,
@@ -724,9 +724,7 @@ export function useGit() {
       await withMissingObjectRecovery(async () => {
         await git.updateIndex({ fs, dir: REPO_DIR, filepath, remove: true })
         amended = await shouldAmendCommit()
-        await git.commit({
-          fs,
-          dir: REPO_DIR,
+        await commit({
           message: `delete ${filepath}`,
           author: settings.author,
           amend: amended,
