@@ -97,6 +97,10 @@ describe('stripMarkdownForPreview', () => {
     expect(stripMarkdownForPreview(input)).toBe('**Title**\n• item\nbold text')
   })
 
+  it('shows the result text of a formula link', () => {
+    expect(stripMarkdownForPreview('| Total | [1600](<#SUM(B2:B3)>) |')).toBe('| Total | 1600 |')
+  })
+
   it('shows images as a placeholder instead of their alt text', () => {
     const input = ['![0.50](img/a.png)', '- see ![Diagram](b.png "Caption")'].join('\n')
 

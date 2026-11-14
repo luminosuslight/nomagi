@@ -26,6 +26,7 @@ import {
   imageBlockWithAlt,
 } from '@/lib/milkdown/images'
 import { jsDrawRemark, jsDrawSchema, jsDrawView } from '@/lib/milkdown/jsDraw'
+import { sheetRemark, sheetSchema, sheetView } from '@/lib/milkdown/sheet'
 import { linkChipsPlugin } from '@/lib/milkdown/linkChips'
 import { configureLinkPreviewClick } from '@/lib/milkdown/linkPreviewClick'
 import { listIndentSpaceInputRule, listOutdentBackspacePlugin } from '@/lib/milkdown/listIndent'
@@ -164,6 +165,9 @@ const { loading } = useEditor((root) => {
     .use(jsDrawRemark)
     .use(jsDrawSchema)
     .use(jsDrawView)
+    .use(sheetRemark)
+    .use(sheetSchema)
+    .use(sheetView)
     .use(listIndentSpaceInputRule)
     .use(listOutdentBackspacePlugin)
     .use(linkChipsPlugin)

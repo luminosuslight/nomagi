@@ -7,6 +7,8 @@ import {
 
 import { drawingSchema } from '@/lib/milkdown/drawing/drawingSchema'
 import { jsDrawSchema } from '@/lib/milkdown/jsDraw/jsDrawSchema'
+import { sheetSchema } from '@/lib/milkdown/sheet/sheetSchema'
+import { emptySheet } from '@/lib/sheet/sheetTypes'
 
 /** Pencil icon for the slash menu (matches lucide Pencil proportions). */
 const sketchIcon = `
@@ -23,6 +25,25 @@ const sketchIcon = `
   >
     <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
     <path d="m15 5 4 4" />
+  </svg>
+`
+
+const spreadsheetIcon = `
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="M12 3v18" />
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M3 9h18" />
+    <path d="M3 15h18" />
   </svg>
 `
 
@@ -61,6 +82,21 @@ export const sketchSlashMenuConfig: Pick<BlockEditFeatureConfig, 'buildMenu'> = 
         commands.call(addBlockTypeCommand.key, {
           nodeType: drawing,
           attrs: { lines: [] },
+        })
+      },
+    })
+
+    advanced.addItem('spreadsheet', {
+      label: 'Spreadsheet',
+      icon: spreadsheetIcon,
+      onRun: (ctx) => {
+        const commands = ctx.get(commandsCtx)
+        const sheet = sheetSchema.type(ctx)
+
+        commands.call(clearTextInCurrentBlockCommand.key)
+        commands.call(addBlockTypeCommand.key, {
+          nodeType: sheet,
+          attrs: { cells: emptySheet() },
         })
       },
     })

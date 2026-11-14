@@ -76,6 +76,7 @@ function stripBlockMarkdownForPreview(line: string): string {
 function stripInlineMarkdownForPreview(line: string): string {
   return line
     .replace(/!\[[^\]]*\]\([^)]*\)/g, IMAGE_PREVIEW)
+    .replace(/\[([^\]]*)\]\(<[^>]*>\)/g, '$1')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
