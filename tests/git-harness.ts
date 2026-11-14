@@ -113,8 +113,7 @@ export function createGitHarness(repoUrl: string) {
     },
 
     async readFile(filepath: string): Promise<string> {
-      const data = await pfs.readFile(`${REPO_DIR}/${filepath}`, { encoding: 'utf8' })
-      return typeof data === 'string' ? data : data.toString('utf8')
+      return pfs.readFile(`${REPO_DIR}/${filepath}`, { encoding: 'utf8' })
     },
 
     async sync() {
