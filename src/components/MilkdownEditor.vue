@@ -26,6 +26,8 @@ import {
   imageBlockWithAlt,
 } from '@/lib/milkdown/images'
 import { jsDrawRemark, jsDrawSchema, jsDrawView } from '@/lib/milkdown/jsDraw'
+import { linkChipsPlugin } from '@/lib/milkdown/linkChips'
+import { configureLinkPreviewClick } from '@/lib/milkdown/linkPreviewClick'
 import { listIndentSpaceInputRule, listOutdentBackspacePlugin } from '@/lib/milkdown/listIndent'
 import { tightBulletList, tightListItem, tightOrderedList } from '@/lib/milkdown/tightLists'
 import { errorMessage, reportError } from '@/lib/errors'
@@ -150,6 +152,7 @@ const { loading } = useEditor((root) => {
       ctx.set(drawingEditingCtx.key, drawingEditing)
     })
     .config(configurePasteImageUrl)
+    .config(configureLinkPreviewClick)
     .use(imageBlockWithAlt)
     .use(tightListItem)
     .use(tightBulletList)
@@ -163,6 +166,7 @@ const { loading } = useEditor((root) => {
     .use(jsDrawView)
     .use(listIndentSpaceInputRule)
     .use(listOutdentBackspacePlugin)
+    .use(linkChipsPlugin)
 
   crepe.on((listener) => {
     listener.focus(() => {
@@ -367,6 +371,37 @@ defineExpose({ getMarkdown, focus })
 
 .milkdown-editor :deep(.milkdown .ProseMirror a:hover) {
   text-decoration-color: currentColor;
+}
+
+/* Bare URLs render as a domain pill (see linkChips.ts); the URL text stays in the DOM for editing. */
+.milkdown-editor :deep(.milkdown .ProseMirror a:has(> .link-chip)) {
+  text-decoration: none;
+}
+
+.milkdown-editor :deep(.link-chip) {
+  font-size: 0;
+}
+
+.milkdown-editor :deep(.link-chip::before) {
+  content: attr(data-domain) ' ↗';
+  display: inline-block;
+  padding: 0 0.5rem;
+  border-radius: 0.375rem;
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  vertical-align: 1px;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror a:hover > .link-chip::before) {
+  background: var(--color-neutral-200);
+  color: var(--color-neutral-900);
+}
+
+/* Crepe sizes this at 14px; inputs below 16px make iOS Safari zoom on focus. */
+.milkdown-editor :deep(.milkdown-link-edit > .link-edit > .input-area) {
+  font-size: 16px;
 }
 
 .milkdown-editor :deep(.milkdown .ProseMirror > :first-child),
