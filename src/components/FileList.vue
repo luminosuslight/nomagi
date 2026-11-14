@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ChevronRight, Folder, FolderPlus, Plus, Trash2 } from 'lucide-vue-next'
+import {
+  ChevronRight,
+  File,
+  FileText,
+  Folder,
+  FolderPlus,
+  Plus,
+  Shapes,
+  Trash2,
+} from 'lucide-vue-next'
 import { TreeItem, TreeRoot } from 'reka-ui'
 import { ancestorFolderPaths } from '@/lib/noteFolders'
 import { buildFileTree, type FileTreeNode } from '@/lib/fileTree'
-import { isMarkdownFile } from '@/lib/fileTypes'
+import { isCanvasFile, isPdfFile } from '@/lib/fileTypes'
+import { formatNoteDate } from '@/lib/formatNoteDate'
 import { listDisplayName } from '@/lib/noteDisplay'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
@@ -17,12 +27,15 @@ const props = withDefaults(
     folders?: string[]
     selectedFile: string | null
     isLoading: boolean
+    /** Last-changed timestamps by filepath. */
+    dates?: Record<string, number>
     emptyMessage?: string
     deleteDisabled?: boolean
     actionsDisabled?: boolean
   }>(),
   {
     folders: () => [],
+    dates: () => ({}),
     emptyMessage: 'No markdown files found.',
     actionsDisabled: false,
   },
@@ -69,7 +82,7 @@ function nodeChildren(node: FileTreeNode): FileTreeNode[] | undefined {
 }
 
 function indentStyle(level: number) {
-  return { paddingLeft: `${12 + (level - 1) * 12}px` }
+  return { paddingLeft: `${8 + (level - 1) * 16}px` }
 }
 
 function onSelect(event: Event, node: FileTreeNode) {
@@ -77,13 +90,10 @@ function onSelect(event: Event, node: FileTreeNode) {
   if (node.kind === 'file') emit('select', node.path)
 }
 
-/** Uppercase suffix for non-markdown notes, or null for `.md`. */
-function fileSuffix(filepath: string): string | null {
-  if (isMarkdownFile(filepath)) return null
-  const base = filepath.slice(filepath.lastIndexOf('/') + 1)
-  const dot = base.lastIndexOf('.')
-  if (dot <= 0) return null
-  return base.slice(dot + 1).toUpperCase()
+function fileIcon(filepath: string) {
+  if (isPdfFile(filepath)) return File
+  if (isCanvasFile(filepath)) return Shapes
+  return FileText
 }
 </script>
 
@@ -99,26 +109,16 @@ function fileSuffix(filepath: string): string | null {
         class="h-8 w-full"
       />
     </div>
-    <template v-else>
-      <div class="px-2 pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          class="w-full"
-          :disabled="actionsDisabled"
-          @click="emit('createFolder')"
-        >
-          <FolderPlus class="size-4" />
-          New folder
-        </Button>
-      </div>
+    <div
+      v-else
+      class="px-2 pb-28 md:pb-3"
+    >
       <TreeRoot
         v-if="hasEntries"
         v-slot="{ flattenItems }"
         v-model:expanded="expanded"
         as="ul"
-        class="space-y-1 p-2"
+        class="space-y-px"
         :items="tree"
         :get-key="nodeKey"
         :get-children="nodeChildren"
@@ -131,34 +131,33 @@ function fileSuffix(filepath: string): string | null {
           v-bind="item.bind"
           :class="
             cn(
-              'list-none rounded-md transition-colors',
-              item.value.kind === 'file' && 'group hover:bg-accent',
-              item.value.kind === 'file' && selectedFile === item.value.path && 'bg-accent',
-              item.value.kind === 'folder' && 'cursor-pointer hover:bg-accent',
+              'group flex h-9 cursor-pointer list-none items-center gap-2 rounded-lg pr-1 text-sm transition-colors hover:bg-neutral-200/50',
+              selectedFile === item.value.path &&
+                'bg-neutral-200/70 font-medium hover:bg-neutral-200/70',
             )
           "
           :style="indentStyle(item.level)"
           @select="onSelect($event, item.value)"
         >
-          <div
-            v-if="item.value.kind === 'folder'"
-            class="flex items-center gap-2 py-1.5 pr-1 text-sm"
-          >
+          <template v-if="item.value.kind === 'folder'">
             <ChevronRight
-              :class="cn('size-4 shrink-0 transition-transform', isExpanded && 'rotate-90')"
+              :class="
+                cn(
+                  'size-3.5 shrink-0 text-neutral-400 transition-transform',
+                  isExpanded && 'rotate-90',
+                )
+              "
             />
-            <Folder class="size-4 shrink-0 opacity-70" />
-            <span class="flex min-w-0 flex-1 items-center gap-1.5">
-              <span class="truncate font-medium">{{ item.value.name }}</span>
-              <span class="shrink-0 text-xs font-medium tabular-nums text-neutral-400">
-                {{ item.value.children.length }}
-              </span>
+            <Folder class="size-4 shrink-0 text-neutral-500" />
+            <span class="truncate font-medium">{{ item.value.name }}</span>
+            <span class="mr-auto shrink-0 text-[11px] text-neutral-400 tabular-nums">
+              {{ item.value.children.length }}
             </span>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              class="size-7 shrink-0"
+              class="size-7 shrink-0 text-neutral-400 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
               :aria-label="`New folder in ${item.value.name}`"
               :disabled="actionsDisabled"
               @click.stop="emit('createSubfolder', item.value.path)"
@@ -169,56 +168,56 @@ function fileSuffix(filepath: string): string | null {
               type="button"
               variant="ghost"
               size="icon"
-              class="size-7 shrink-0"
+              class="size-7 shrink-0 text-neutral-400 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
               :aria-label="`New note in ${item.value.name}`"
               :disabled="actionsDisabled"
               @click.stop="emit('createInFolder', item.value.path)"
             >
               <Plus class="size-4" />
             </Button>
-          </div>
-          <div
-            v-else
-            class="flex items-center pr-1"
-          >
+          </template>
+          <template v-else>
+            <component
+              :is="fileIcon(item.value.path)"
+              class="ml-5.5 size-4 shrink-0 text-neutral-400"
+            />
+            <span class="min-w-0 flex-1 truncate">{{ listDisplayName(item.value.path) }}</span>
             <span
-              :class="
-                cn(
-                  'min-w-0 flex-1 truncate py-2 pr-1 text-left text-sm',
-                  selectedFile === item.value.path && 'font-medium',
-                )
-              "
+              class="shrink-0 text-[11px] font-normal text-neutral-400 tabular-nums group-hover:hidden group-focus-within:hidden"
             >
-              {{ listDisplayName(item.value.path) }}
+              {{ formatNoteDate(dates[item.value.path] ?? 0) }}
             </span>
-            <div class="relative size-7 shrink-0">
-              <span
-                v-if="fileSuffix(item.value.path)"
-                class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-bold uppercase text-neutral-400 group-hover:invisible group-focus-within:invisible"
-              >
-                {{ fileSuffix(item.value.path) }}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                class="absolute inset-0 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-0 group-hover:disabled:opacity-100"
-                aria-label="Delete note"
-                :disabled="deleteDisabled"
-                @click.stop="emit('delete', item.value.path)"
-              >
-                <Trash2 class="size-4" />
-              </Button>
-            </div>
-          </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              class="hidden size-7 shrink-0 text-neutral-500 group-hover:flex group-focus-within:flex"
+              aria-label="Delete note"
+              :disabled="deleteDisabled"
+              @click.stop="emit('delete', item.value.path)"
+            >
+              <Trash2 class="size-4" />
+            </Button>
+          </template>
         </TreeItem>
       </TreeRoot>
       <p
         v-else
-        class="p-4 text-sm text-muted-foreground"
+        class="p-2 text-sm text-muted-foreground"
       >
         {{ emptyMessage }}
       </p>
-    </template>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        class="mt-1 w-full justify-start gap-2 pl-2 text-neutral-500"
+        :disabled="actionsDisabled"
+        @click="emit('createFolder')"
+      >
+        <FolderPlus class="size-4" />
+        New folder
+      </Button>
+    </div>
   </ScrollArea>
 </template>

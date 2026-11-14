@@ -1,101 +1,111 @@
 <script setup lang="ts">
-import { cn } from '@/lib/utils'
-import { listDisplayName, previewLineSegments } from '@/lib/noteDisplay'
-import Card from '@/components/ui/card/Card.vue'
+import { computed } from 'vue'
+import { recencyGroup } from '@/lib/formatNoteDate'
+import NoteCard from '@/components/NoteCard.vue'
 import ScrollArea from '@/components/ui/ScrollArea.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 
 export type NotePreviewItem = {
   filepath: string
   preview: string
-  headerRight?: string | null
+  lastModified?: number
 }
 
-defineProps<{
+const props = defineProps<{
   items: NotePreviewItem[]
   selectedFile: string | null
   isLoading: boolean
+  /** `grid`: two-column post-it cards; `list`: full-width rows with a short preview. */
+  layout: 'grid' | 'list'
+  /** Section items under Today / Yesterday / This week / Earlier headers. */
+  grouped?: boolean
+  highlight?: string
   emptyMessage?: string
 }>()
 
 const emit = defineEmits<{
   select: [filepath: string]
 }>()
+
+const GRID_MAX_LINES = 10
+
+/** Greedily balances cards over two columns by estimated height, keeping row-wise order. */
+function toColumns(items: NotePreviewItem[]): NotePreviewItem[][] {
+  if (props.layout === 'list') return [items]
+  const columns: NotePreviewItem[][] = [[], []]
+  const heights = [0, 0]
+  for (const item of items) {
+    const column = heights[0] <= heights[1] ? 0 : 1
+    columns[column].push(item)
+    heights[column] += 3 + Math.min(item.preview.split('\n').length, GRID_MAX_LINES)
+  }
+  return columns
+}
+
+const sections = computed(() => {
+  if (!props.grouped) return [{ label: null, columns: toColumns(props.items) }]
+
+  const groups = new Map<string, NotePreviewItem[]>()
+  for (const item of props.items) {
+    const label = recencyGroup(item.lastModified ?? 0)
+    groups.set(label, [...(groups.get(label) ?? []), item])
+  }
+  return [...groups].map(([label, items]) => ({ label, columns: toColumns(items) }))
+})
 </script>
 
 <template>
   <ScrollArea class="min-h-0 flex-1">
-    <div
-      v-if="isLoading"
-      class="space-y-2 p-3"
-    >
-      <Skeleton
-        v-for="n in 5"
-        :key="n"
-        class="h-24 w-full rounded-lg"
-      />
-    </div>
-    <ul
-      v-else-if="items.length"
-      class="space-y-2 p-3"
-    >
-      <li
-        v-for="item in items"
-        :key="item.filepath"
+    <div class="p-3 pb-28 md:pb-3">
+      <div
+        v-if="isLoading"
+        class="space-y-2"
       >
-        <button
-          type="button"
-          class="w-full rounded-lg text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40"
-          @click="emit('select', item.filepath)"
+        <Skeleton
+          v-for="n in 4"
+          :key="n"
+          class="h-24 w-full rounded-xl"
+        />
+      </div>
+      <template v-else-if="items.length">
+        <section
+          v-for="section in sections"
+          :key="section.label ?? ''"
         >
-          <Card
-            :class="
-              cn(
-                'overflow-hidden border-border/50 bg-muted/40 p-0 shadow-none transition-colors hover:border-border hover:bg-muted/60',
-                selectedFile === item.filepath && 'border-border bg-accent/50 ring-1 ring-ring/25',
-              )
-            "
+          <h2
+            v-if="section.label"
+            class="px-1 pt-2 pb-2 text-[11px] font-medium tracking-wide text-neutral-400 uppercase"
           >
-            <div
-              class="flex items-center gap-2 border-b border-border/50 bg-muted/70 px-3 py-1.5 text-xs"
+            {{ section.label }}
+          </h2>
+          <div class="flex items-start gap-2 pb-2">
+            <ul
+              v-for="(column, columnIndex) in section.columns"
+              :key="columnIndex"
+              class="flex min-w-0 flex-1 flex-col gap-2"
             >
-              <span class="min-w-0 flex-1 truncate font-medium text-muted-foreground">
-                {{ listDisplayName(item.filepath) }}
-              </span>
-              <span
-                v-if="item.headerRight"
-                class="shrink-0 text-muted-foreground"
+              <li
+                v-for="item in column"
+                :key="item.filepath"
               >
-                {{ item.headerRight }}
-              </span>
-            </div>
-            <p class="line-clamp-5 p-3 text-sm leading-snug text-foreground/75">
-              <span
-                v-for="(line, lineIndex) in item.preview.split('\n')"
-                :key="lineIndex"
-                class="block"
-              >
-                <template
-                  v-for="(segment, segmentIndex) in previewLineSegments(line)"
-                  :key="segmentIndex"
-                >
-                  <span
-                    v-if="segment.bold"
-                    class="font-semibold"
-                  >{{ segment.text }}</span>
-                  <template v-else>{{ segment.text }}</template>
-                </template>
-              </span>
-            </p>
-          </Card>
-        </button>
-      </li>
-    </ul>
-    <p
-      v-else
-      class="p-4 text-sm text-muted-foreground"
-    >
-      {{ emptyMessage ?? 'No notes found.' }}
-    </p>
+                <NoteCard
+                  v-bind="item"
+                  :selected="selectedFile === item.filepath"
+                  :highlight="highlight"
+                  :clamp-class="layout === 'grid' ? 'line-clamp-10' : 'line-clamp-3'"
+                  @select="emit('select', item.filepath)"
+                />
+              </li>
+            </ul>
+          </div>
+        </section>
+      </template>
+      <p
+        v-else
+        class="p-1 text-sm text-muted-foreground"
+      >
+        {{ emptyMessage ?? 'No notes found.' }}
+      </p>
+    </div>
   </ScrollArea>
 </template>

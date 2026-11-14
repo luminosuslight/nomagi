@@ -1,5 +1,67 @@
 import { describe, expect, it } from 'vitest'
-import { listDisplayName, previewFromContent, stripMarkdownForPreview } from '@/lib/noteDisplay'
+import {
+  highlightParts,
+  listDisplayName,
+  matchPreview,
+  noteFolder,
+  parsePreviewLine,
+  previewFromContent,
+  stripMarkdownForPreview,
+} from '@/lib/noteDisplay'
+
+describe('noteFolder', () => {
+  it('returns the parent path, or empty for root notes', () => {
+    expect(noteFolder('Ideen/Bauen/note.md')).toBe('Ideen/Bauen')
+    expect(noteFolder('note.md')).toBe('')
+  })
+})
+
+describe('parsePreviewLine', () => {
+  it('detects list markers and splits bold and media segments', () => {
+    expect(parsePreviewLine('☐ buy **milk** <img>')).toEqual({
+      marker: 'todo',
+      segments: [
+        { text: 'buy ' },
+        { text: 'milk', bold: true },
+        { text: ' ' },
+        { text: 'Image', media: 'image' },
+      ],
+    })
+    expect(parsePreviewLine('[drawing]').segments).toEqual([{ text: 'Drawing', media: 'drawing' }])
+    expect(parsePreviewLine('plain').marker).toBeNull()
+  })
+})
+
+describe('highlightParts', () => {
+  it('marks case-insensitive matches', () => {
+    expect(highlightParts('V-Neck and v-neck', 'v-neck')).toEqual([
+      { text: 'V-Neck', match: true },
+      { text: ' and ', match: false },
+      { text: 'v-neck', match: true },
+    ])
+  })
+
+  it('returns the text unchanged without a query', () => {
+    expect(highlightParts('text', ' ')).toEqual([{ text: 'text', match: false }])
+  })
+})
+
+describe('matchPreview', () => {
+  it('keeps only matching lines', () => {
+    expect(matchPreview('# Title\n- apple pie\n- pear\n- Apple juice', 'apple')).toBe(
+      '• apple pie\n• Apple juice',
+    )
+  })
+
+  it('trims long lines to start near the match', () => {
+    const line = `${'x'.repeat(80)} needle end`
+    expect(matchPreview(line, 'needle')).toBe(`…${'x'.repeat(29)} needle end`)
+  })
+
+  it('returns null when only markup matches', () => {
+    expect(matchPreview('[link](https://example.com)', 'example')).toBeNull()
+  })
+})
 
 describe('listDisplayName', () => {
   it('strips .md from named notes', () => {
@@ -78,6 +140,10 @@ describe('stripMarkdownForPreview', () => {
     expect(stripMarkdownForPreview(input)).toBe('• dash\n• one\n• two\n• three')
   })
 
+  it('drops empty list items and unescapes markdown punctuation', () => {
+    expect(stripMarkdownForPreview('- a\n-\n- [ ]\n- 16\\*80 Q\\&A')).toBe('• a\n• 16*80 Q&A')
+  })
+
   it('handles consecutive asterisk list lines without breaking checkboxes', () => {
     const input = ['* first', '* [ ] second'].join('\n')
     expect(stripMarkdownForPreview(input)).toBe('• first\n☐ second')
@@ -85,15 +151,15 @@ describe('stripMarkdownForPreview', () => {
 })
 
 describe('previewFromContent', () => {
-  it('uses first 5 lines when shorter than 150 chars', () => {
-    const text = 'line one\nline two\nline three'
-    expect(previewFromContent(text)).toBe('line one\nline two\nline three')
+  it('uses first 12 lines when shorter than 500 chars', () => {
+    const lines = Array.from({ length: 15 }, (_, i) => `line ${i}`)
+    expect(previewFromContent(lines.join('\n'))).toBe(lines.slice(0, 12).join('\n'))
   })
 
-  it('uses first 150 chars when shorter than 5 lines', () => {
-    const longLine = 'a'.repeat(200)
+  it('uses first 500 chars when shorter than 12 lines', () => {
+    const longLine = 'a'.repeat(600)
     const text = `${longLine}\nignored`
-    expect(previewFromContent(text)).toBe('a'.repeat(150))
+    expect(previewFromContent(text)).toBe('a'.repeat(500))
   })
 
   it('returns Empty note for whitespace-only content', () => {

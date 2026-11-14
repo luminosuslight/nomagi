@@ -9,17 +9,16 @@ import {
   type StorageSetupResult,
 } from '@/lib/browserStorage'
 import { errorMessage, reportError } from '@/lib/errors'
-import { formatRelativeTime } from '@/lib/formatRelativeTime'
 import { listDisplayName } from '@/lib/noteDisplay'
 import type { NoteKind } from '@/lib/noteFilenames'
 import { resolveNewFolderPath } from '@/lib/noteFolders'
-import { Plus, Settings } from 'lucide-vue-next'
+import { Settings } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button.vue'
 import FileList from '@/components/FileList.vue'
 import NotePreviewList from '@/components/NotePreviewList.vue'
 import SearchNotesPanel from '@/components/SearchNotesPanel.vue'
-import SidebarViewTabs, { type SidebarView } from '@/components/SidebarViewTabs.vue'
+import SidebarNav, { type SidebarView } from '@/components/SidebarNav.vue'
 import Editor from '@/components/Editor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import NewNoteDialog from '@/components/NewNoteDialog.vue'
@@ -29,6 +28,7 @@ import SyncButton from '@/components/SyncButton.vue'
 import ConfirmAlertDialog from '@/components/ui/ConfirmAlertDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
 import { confirmDialog, useConfirmDialogHost } from '@/composables/useConfirmDialog'
+import { useMediaQuery } from '@/composables/useMediaQuery'
 import { useNotes } from '@/composables/useNotes'
 import { usePwaUpdate } from '@/composables/usePwaUpdate'
 
@@ -82,15 +82,13 @@ const newFolderOpen = ref(false)
 const newFolderParent = ref<string | undefined>(undefined)
 const moveNoteOpen = ref(false)
 const sidebarView = ref<SidebarView>('recent')
+const searchQuery = ref('')
 const mobileView = ref<MobileView>('files')
 const isOnline = ref(navigator.onLine)
+const isWide = useMediaQuery('(min-width: 768px)')
 
-const recentPreviewItems = computed(() =>
-  recentNotes.value.map((note) => ({
-    filepath: note.filepath,
-    preview: note.preview,
-    headerRight: formatRelativeTime(note.lastModified),
-  })),
+const noteDates = computed(() =>
+  Object.fromEntries(recentNotes.value.map((note) => [note.filepath, note.lastModified])),
 )
 
 async function handleClone() {
@@ -282,13 +280,13 @@ onUnmounted(() => {
     <aside
       :class="
         cn(
-          'flex w-full min-h-0 flex-1 flex-col border-r md:w-72 md:flex-none md:min-h-dvh',
+          'flex w-full min-h-0 flex-1 flex-col border-r bg-neutral-50 md:w-80 md:flex-none md:min-h-dvh',
           mobileView !== 'files' && 'hidden md:flex',
         )
       "
     >
-      <div class="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
-        <h1 class="text-base font-semibold">
+      <div class="flex h-14 shrink-0 items-center justify-between gap-2 px-4">
+        <h1 class="text-base font-semibold tracking-tight">
           Nomagi
         </h1>
         <div class="flex items-center gap-1">
@@ -310,25 +308,17 @@ onUnmounted(() => {
           </Button>
         </div>
       </div>
-      <div class="p-3 pb-0">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          class="w-full"
-          :disabled="!isCloned || isBusy"
-          @click="handleNewFile"
-        >
-          <Plus class="size-4" />
-          New note
-        </Button>
-      </div>
-      <SidebarViewTabs v-model="sidebarView" />
+      <SidebarNav
+        v-model="sidebarView"
+        :can-create-note="isCloned && !isBusy"
+        @new-note="handleNewFile"
+      />
       <FileList
         v-if="sidebarView === 'files'"
         :files="files"
         :folders="folders"
         :selected-file="selectedFile"
+        :dates="noteDates"
         :is-loading="isLoadingFiles"
         :delete-disabled="isBusy"
         :actions-disabled="!isCloned || isBusy"
@@ -340,16 +330,20 @@ onUnmounted(() => {
       />
       <NotePreviewList
         v-else-if="sidebarView === 'recent'"
-        :items="recentPreviewItems"
+        :items="recentNotes"
+        :layout="isWide ? 'list' : 'grid'"
+        :grouped="isWide"
         :selected-file="selectedFile"
         :is-loading="isLoadingFiles"
         @select="selectFile"
       />
       <SearchNotesPanel
         v-else
+        v-model:query="searchQuery"
         :files="files"
         :read-file="readFile"
         :selected-file="selectedFile"
+        :dates="noteDates"
         @select="selectFile"
       />
     </aside>

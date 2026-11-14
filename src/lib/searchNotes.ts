@@ -1,10 +1,11 @@
-import { previewFromContent } from '@/lib/noteDisplay'
+import { matchPreview, previewFromContent } from '@/lib/noteDisplay'
 import { canvasPlainTextFromContent, canvasPreviewFromContent } from '@/lib/canvas/jsonCanvas'
 import { isCanvasFile, isPdfFile } from '@/lib/fileTypes'
 
 export type SearchResult = {
   filepath: string
   matchCount: number
+  /** Matching lines, or the regular note preview when only the filename matched. */
   preview: string
 }
 
@@ -51,9 +52,9 @@ export async function searchNotes(
 
       if (matchCount === 0) return null
 
-      const preview = isCanvasFile(filepath)
-        ? canvasPreviewFromContent(raw)
-        : previewFromContent(content)
+      const preview =
+        matchPreview(content, normalizedQuery) ??
+        (isCanvasFile(filepath) ? canvasPreviewFromContent(raw) : previewFromContent(content))
       return { filepath, matchCount, preview }
     }),
   )
