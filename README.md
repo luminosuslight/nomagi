@@ -46,6 +46,8 @@ Not for users who need real-time collaboration or project management features (l
 | Spreadsheet formulas in notes | Yes (Markdown tables, results readable anywhere) | Only in databases (row formulas, column totals) | Via plugins | Via plugins | No |
 | Whiteboard / canvas | Yes (open JSON Canvas files) | Only via embeds (Miro, Excalidraw, …) | Yes (Obsidian Canvas uses JSON Canvas too; Logseq has whiteboards) | Yes (desktop only, JSON Canvas stored inside notes) | No |
 
+[Nextcloud](https://nextcloud.com/) covers similar ground: its Notes app saves plain `.md` files, Nextcloud Whiteboard is built on Excalidraw, and Nextcloud Office has full spreadsheets. It is a whole server suite to run and maintain though (the whiteboard needs an extra collaboration server, even for a single user). Whiteboards and spreadsheets are separate files rather than blocks inside a note. File versions are thinned out over time instead of kept as a complete history, and AI agents reach the notes through the sync client or WebDAV rather than a cloned repo.
+
 ## Limitations & roadmap
 
 Sketches are scoped to blocks *within* a note. For a free-floating layout there are whiteboards: they hold text notes, images, frames and embedded notes (including their sketches), but you can't draw freehand directly on the board.
