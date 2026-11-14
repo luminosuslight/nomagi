@@ -25,6 +25,7 @@ Not for users who need real-time collaboration or project management features (l
 - **Plain Markdown, even on disk.** Notes are stored as standard `.md` files, not a proprietary or "markdown-like" internal format. No vendor lock-in, you can switch to other tools at any time and edit files manually with external editors.
 - **Modern WYSIWYG editing.** A polished [Milkdown](https://milkdown.dev/) editor, not a raw textarea. Notion-like convenience.
 - **Sketches where you need them.** Handwriting and sketch blocks live *inside* a Markdown note as SVG, kept simple and local to the document. Works great on a tablet / iPad.
+- **Quick spreadsheets right in your notes.** Adding up expenses shouldn't need a separate app, and plain Markdown tables can't calculate. Spreadsheet blocks fill that gap with Excel formulas in a grid editor, while staying ordinary Markdown tables: each formula is stored as a link whose text is the result (`[1600](<#SUM(B2:B3)>)`), so other viewers simply show the numbers.
 - **Whiteboards in an open format.** Arrange text notes, images, frames and whole embedded notes (editable right on the board) on an infinite canvas. Boards are plain `.canvas` files in Obsidian's open [JSON Canvas](https://jsoncanvas.org/) format, one node per line so git diffs stay readable, and they open in other tools too.
 - **AI outsourced** Because notes are plain files, point *any* agent (Cursor, Copilot, Claude, …) directly at your repo to edit, refactor, or summarize. No need for the app to ship its own slightly-worse, less-maintained AI features — best-in-class tools work on your files directly.
 - **Nothing to host, you still own the data** The app is **client-only** — nothing to host (except optionally a CORS proxy, see below). Point it at any Git remote you already trust (GitHub, self-hosted GitLab, a local bare repo). No additional maintenance, no "the app server shuts down after a year" risk.
@@ -42,6 +43,7 @@ Not for users who need real-time collaboration or project management features (l
 | Edit notes with any AI agent | Yes (plain files) | Limited / built-in only | Yes | Indirect | Yes |
 | Polished WYSIWYG editor | Yes (Milkdown) | Yes | Partial | Partial | No |
 | Handwritten / sketch notes | Yes (blocks in a note) | No | Via plugins | Via plugin | No |
+| Spreadsheet formulas in notes | Yes (Markdown tables, results readable anywhere) | Only in databases (row formulas, column totals) | Via plugins | Via plugins | No |
 | Whiteboard / canvas | Yes (open JSON Canvas files) | Only via embeds (Miro, Excalidraw, …) | Yes (Obsidian Canvas uses JSON Canvas too; Logseq has whiteboards) | Yes (desktop only, JSON Canvas stored inside notes) | No |
 
 ## Limitations & roadmap
@@ -49,6 +51,8 @@ Not for users who need real-time collaboration or project management features (l
 Sketches are scoped to blocks *within* a note. For a free-floating layout there are whiteboards: they hold text notes, images, frames and embedded notes (including their sketches), but you can't draw freehand directly on the board.
 
 Whiteboards use Obsidian's open [`jsoncanvas`](https://jsoncanvas.org/) format, so even these features stay in portable, open formats. Connecting lines between nodes aren't drawn or editable yet; they are kept untouched in the file, so boards created in other tools don't lose them.
+
+Spreadsheets recalculate when you save them in the grid editor. If a table is edited outside Nomagi, its results stay as written until the next save in the app. Formulas can only refer to cells in the same table, and column widths are not saved.
 
 ## Try it
 
@@ -125,6 +129,8 @@ npm run dev
 
 Vite serves the app with hot reload (default http://localhost:5173). The dev server includes the same `/git-cors/` proxy as production.
 
+To work on spreadsheet blocks without a repository, open `/sheet-harness.html` on the dev server. It shows a standalone editor next to the Markdown it produces.
+
 ## Auto-save & sync
 
 The app automatically saves changes by creating commits (it amends to the last commit within a reasonable time), and sync the notes to the git remote using pull & push. It resolves conflicts by always taking both changes.
@@ -141,7 +147,7 @@ Rapid edits within 60 s amend the same local commit until it is pushed. Sync pus
 
 ## Tech stack
 
-Vue 3 + TypeScript + Vite, [isomorphic-git](https://isomorphic-git.org/) with LightningFS for in-browser Git, [Milkdown](https://milkdown.dev/) for editing, and `vite-plugin-pwa` for offline/installable support.
+Vue 3 + TypeScript + Vite, [isomorphic-git](https://isomorphic-git.org/) with LightningFS for in-browser Git, [Milkdown](https://milkdown.dev/) for editing, [Jspreadsheet CE](https://github.com/jspreadsheet/ce) and [fast-formula-parser](https://www.npmjs.com/package/@rowsncolumns/fast-formula-parser) for spreadsheets, and `vite-plugin-pwa` for offline/installable support.
 
 ## Naming
 
