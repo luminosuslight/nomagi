@@ -1,6 +1,6 @@
 # Nomagi — modern notes app using markdown and git
 
-Technically a pure frontend to **plain Markdown files in your own Git repo** — but acts like a **modern notes app** with mobile and offline support plus advanced features like **handwritten sketches**.
+Technically a pure frontend to **plain Markdown files in your own Git repo** — but acts like a **modern notes app** with mobile and offline support plus advanced features like **handwritten sketches** and **whiteboards**.
 
 Web-app, installable as a PWA for a native-like, offline experience on mobile (iOS/Android) and desktop.
 
@@ -12,9 +12,11 @@ Works with any git hoster that supports personal access tokens (GitHub, GitLab, 
 | --- | --- | --- |
 | ![Connect a Git repository](docs/images/setup_screen.png) | ![Recent notes sidebar](docs/images/recent_screen.png) | ![Note with handwritten sketch blocks](docs/images/example_note.png) |
 
+![Whiteboard with notes, an embedded note and groups](docs/images/whiteboard.png)
+
 ## Who it's for
 
-People who value Markdown and Git as a **safe, durable home for valuable personal or work notes** but don't want to miss out on features that a code editor can't provide - like taking handwritten notes on a tablet.
+People who value Markdown and Git as a **safe, durable home for valuable personal or work notes** but don't want to miss out on features that a code editor can't provide - like taking handwritten notes on a tablet or arranging notes on a whiteboard.
 
 Not for users who need real-time collaboration or project management features (like tasks, databases and kanban boards); consider tools like NextCloud Whiteboard (Excalidraw) or AFFiNE instead.
 
@@ -23,6 +25,7 @@ Not for users who need real-time collaboration or project management features (l
 - **Plain Markdown, even on disk.** Notes are stored as standard `.md` files, not a proprietary or "markdown-like" internal format. No vendor lock-in, you can switch to other tools at any time and edit files manually with external editors.
 - **Modern WYSIWYG editing.** A polished [Milkdown](https://milkdown.dev/) editor, not a raw textarea. Notion-like convenience.
 - **Sketches where you need them.** Handwriting and sketch blocks live *inside* a Markdown note as SVG, kept simple and local to the document. Works great on a tablet / iPad.
+- **Whiteboards in an open format.** Arrange text notes, images, frames and whole embedded notes (editable right on the board) on an infinite canvas. Boards are plain `.canvas` files in Obsidian's open [JSON Canvas](https://jsoncanvas.org/) format, one node per line so git diffs stay readable, and they open in other tools too.
 - **AI outsourced** Because notes are plain files, point *any* agent (Cursor, Copilot, Claude, …) directly at your repo to edit, refactor, or summarize. No need for the app to ship its own slightly-worse, less-maintained AI features — best-in-class tools work on your files directly.
 - **Nothing to host, you still own the data** The app is **client-only** — nothing to host (except optionally a CORS proxy, see below). Point it at any Git remote you already trust (GitHub, self-hosted GitLab, a local bare repo). No additional maintenance, no "the app server shuts down after a year" risk.
 - **Git does the hard parts, invisibly.** Versioning, history, backup, and conflict resolution are handled by Git — but you never see it. No commits, no push/pull, no merge prompts. It auto-saves and syncs in the background, so it just feels like any modern app that saves for you.
@@ -39,12 +42,13 @@ Not for users who need real-time collaboration or project management features (l
 | Edit notes with any AI agent | Yes (plain files) | Limited / built-in only | Yes | Indirect | Yes |
 | Polished WYSIWYG editor | Yes (Milkdown) | Yes | Partial | Partial | No |
 | Handwritten / sketch notes | Yes (blocks in a note) | No | Via plugins | Via plugin | No |
+| Whiteboard / canvas | Yes (open JSON Canvas files) | Only via embeds (Miro, Excalidraw, …) | Yes (Obsidian Canvas uses JSON Canvas too; Logseq has whiteboards) | Yes (desktop only, JSON Canvas stored inside notes) | No |
 
-## Roadmap
+## Limitations & roadmap
 
-Currently, sketches are scoped to blocks *within* a note, not a free-floating canvas across documents or anywhere on documents (like with OneNote).
+Sketches are scoped to blocks *within* a note. For a free-floating layout there are whiteboards: they hold text notes, images, frames and embedded notes (including their sketches), but you can't draw freehand directly on the board.
 
-A whiteboard/canvas may come later via Obsidian's open [`jsoncanvas`](https://jsoncanvas.org/) format — so even future features stay in portable, open formats.
+Whiteboards use Obsidian's open [`jsoncanvas`](https://jsoncanvas.org/) format, so even these features stay in portable, open formats. Connecting lines between nodes aren't drawn or editable yet; they are kept untouched in the file, so boards created in other tools don't lose them.
 
 ## Try it
 
