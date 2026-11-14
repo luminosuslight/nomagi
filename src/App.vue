@@ -70,6 +70,7 @@ const {
   deleteFile,
   readFile,
   readFileBinary,
+  createBinaryFile,
 } = useNotes()
 
 const settingsOpen = ref(false)
@@ -362,6 +363,7 @@ onUnmounted(() => {
         v-model="content"
         :pdf-data="pdfContent"
         :read-file-binary="readFileBinary"
+        :create-binary-file="createBinaryFile"
         :filename="selectedFile"
         :is-loading="isLoadingContent"
         :show-back="mobileView === 'editor'"

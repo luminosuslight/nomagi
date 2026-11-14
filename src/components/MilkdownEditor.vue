@@ -27,7 +27,10 @@ import {
 import { jsDrawRemark, jsDrawSchema, jsDrawView } from '@/lib/milkdown/jsDraw'
 import { listIndentSpaceInputRule, listOutdentBackspacePlugin } from '@/lib/milkdown/listIndent'
 import { tightBulletList, tightListItem, tightOrderedList } from '@/lib/milkdown/tightLists'
+import { errorMessage, reportError } from '@/lib/errors'
+import { savePastedImage } from '@/lib/pastedImages'
 import { cn } from '@/lib/utils'
+import { toast } from 'vue-sonner'
 
 import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
@@ -40,6 +43,8 @@ const props = defineProps<{
   /** Repo path of the open note; relative image paths resolve against it. */
   filename?: string | null
   readFileBinary?: (filepath: string) => Promise<Uint8Array>
+  /** Commits a new file; pasted and uploaded images are saved through it. */
+  createBinaryFile?: (filepath: string, bytes: Uint8Array) => Promise<string>
 }>()
 
 /** Images stay thumbnail-sized in the note; the lightbox shows them full size. */
@@ -62,6 +67,16 @@ const isUnmounted = ref(false)
 const imageResolver = props.readFileBinary
   ? createRepoImageResolver(() => props.filename ?? null, props.readFileBinary)
   : null
+
+async function uploadImage(file: File): Promise<string> {
+  try {
+    return await savePastedImage(file, props.createBinaryFile!)
+  } catch (err) {
+    reportError('saveImage', err)
+    toast.error(`Could not save image: ${errorMessage(err)}`)
+    throw err
+  }
+}
 
 const editorScrollEl = ref<HTMLElement | null>(null)
 const lightboxImages = shallowRef<LightboxImage[]>([])
@@ -119,6 +134,7 @@ const { loading } = useEditor((root) => {
       [Crepe.Feature.ImageBlock]: {
         maxHeight: IMAGE_MAX_HEIGHT_PX,
         proxyDomURL: imageResolver?.resolve,
+        onUpload: props.createBinaryFile ? uploadImage : undefined,
       },
     },
   })

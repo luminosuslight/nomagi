@@ -2,7 +2,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useGit } from './useGit'
 import { errorMessage, reportError } from '@/lib/errors'
 import { previewFromContent } from '@/lib/noteDisplay'
-import { isPdfFile } from '@/lib/fileTypes'
+import { isNoteFile, isPdfFile } from '@/lib/fileTypes'
 import type { RecentNote } from './useGit'
 
 type RecentNoteWithPreview = RecentNote & { preview: string }
@@ -232,6 +232,7 @@ export function useNotes() {
   }
 
   git.onAfterCommit((filepath) => {
+    if (!isNoteFile(filepath)) return
     void bumpRecentNote(filepath).catch((err) => reportError('refreshRecent', err))
   })
 

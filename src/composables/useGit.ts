@@ -16,6 +16,7 @@ import {
 } from '@/lib/noteFilenames'
 import { assertSafeRelativePath } from '@/lib/noteFolders'
 import { isNoteFile, isPdfFile } from '@/lib/fileTypes'
+import { PASTED_IMAGES_DIR, withNumericSuffix } from '@/lib/pastedImages'
 import {
   CLONED_AT_KEY_PREFIX,
   collectGitNoteMtimes,
@@ -176,6 +177,15 @@ async function ensureParentDirs(filepath: string): Promise<void> {
   await ensureDir(filepath.slice(0, slash))
 }
 
+async function pathExists(filepath: string): Promise<boolean> {
+  try {
+    await pfs.stat(`${REPO_DIR}/${filepath}`)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function collectRepoEntries(
   dir: string,
   prefix: string,
@@ -190,7 +200,7 @@ async function collectRepoEntries(
     const stat = await pfs.stat(fullPath)
     if (stat.isDirectory()) {
       const folderPath = prefix ? `${prefix}/${name}` : name
-      folders.push(folderPath)
+      if (folderPath !== PASTED_IMAGES_DIR) folders.push(folderPath)
       const nested = await collectRepoEntries(fullPath, folderPath)
       files.push(...nested.files)
       folders.push(...nested.folders)
@@ -633,6 +643,22 @@ export function useGit() {
     })
   }
 
+  /** Write bytes to a new file (suffixing -2, -3, … on name clashes), commit, and return its path. */
+  async function createBinaryFile(filepath: string, bytes: Uint8Array): Promise<string> {
+    return withGitLock(async () => {
+      let path = filepath
+      for (let suffix = 2; await pathExists(path); suffix++) {
+        path = withNumericSuffix(filepath, suffix)
+      }
+      await withStorageErrors(async () => {
+        await ensureParentDirs(path)
+        await pfs.writeFile(`${REPO_DIR}/${path}`, bytes)
+      })
+      await commitFile(path, `add ${path}`)
+      return path
+    })
+  }
+
   async function createFile(options?: ResolveNewNoteOptions, content = '') {
     const existing = await listFiles()
     const filename = resolveNewNoteFilename(options, existing)
@@ -761,6 +787,7 @@ export function useGit() {
     readFile,
     readFileBinary,
     writeFile,
+    createBinaryFile,
     createFile,
     createFolder,
     moveFile,
