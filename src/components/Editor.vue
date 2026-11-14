@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, provide, ref, watch } from 'vue'
-import { ArrowLeft, Code2, PenLine, Plus, Trash2 } from 'lucide-vue-next'
+import { ChevronLeft, Code2, Plus } from 'lucide-vue-next'
 import { MilkdownProvider } from '@milkdown/vue'
 import MarkdownCodeEditor from '@/components/MarkdownCodeEditor.vue'
 import MilkdownEditor from '@/components/MilkdownEditor.vue'
 const PdfViewer = defineAsyncComponent(() => import('@/components/PdfViewer.vue'))
 const CanvasEditor = defineAsyncComponent(() => import('@/components/canvas/CanvasEditor.vue'))
+import NoteActionsMenu from '@/components/NoteActionsMenu.vue'
 import Button from '@/components/ui/Button.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import { drawingEditingKey, editorOverlayRootKey } from '@/lib/editorOverlay'
 import { isCanvasFile, isPdfFile } from '@/lib/fileTypes'
-import { listDisplayName } from '@/lib/noteDisplay'
+import { formatNoteDate } from '@/lib/formatNoteDate'
+import { listDisplayName, noteFolder } from '@/lib/noteDisplay'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<{
@@ -23,6 +25,7 @@ const props = defineProps<{
   readFileBinary?: (filepath: string) => Promise<Uint8Array>
   createBinaryFile?: (filepath: string, bytes: Uint8Array) => Promise<string>
   isLoading: boolean
+  lastModified?: number
   showBack?: boolean
   canCreateNote?: boolean
   deleteDisabled?: boolean
@@ -45,6 +48,10 @@ type EditorMode = 'wysiwyg' | 'code'
 const isPdf = computed(() => Boolean(props.filename && isPdfFile(props.filename)))
 const isCanvas = computed(() => Boolean(props.filename && isCanvasFile(props.filename)))
 const displayName = computed(() => (props.filename ? listDisplayName(props.filename) : null))
+const breadcrumb = computed(() =>
+  props.filename ? noteFolder(props.filename).split('/').join(' / ') : '',
+)
+const editedLabel = computed(() => formatNoteDate(props.lastModified ?? 0))
 
 const editorPanel = ref<HTMLElement | null>(null)
 const drawingEditing = ref(false)
@@ -113,10 +120,10 @@ function setEditorMode(mode: EditorMode) {
     ref="editorPanel"
     class="relative flex h-full min-h-0 flex-1 flex-col"
   >
-    <div
+    <header
       :class="
         cn(
-          'flex h-14 shrink-0 items-center gap-3 border-b px-4',
+          'flex h-14 shrink-0 items-center gap-1 border-b border-neutral-100 px-2 md:px-4',
           drawingEditing && 'pointer-events-none select-none',
         )
       "
@@ -130,97 +137,84 @@ function setEditorMode(mode: EditorMode) {
         aria-label="Back to files"
         @click="$emit('back')"
       >
-        <ArrowLeft class="size-4" />
+        <ChevronLeft class="size-5" />
       </Button>
-      <h2
-        v-if="!filename"
-        class="min-w-0 flex-1 truncate text-sm font-medium"
-      >
-        Select a note
-      </h2>
-      <input
-        v-else-if="renaming"
-        ref="renameInputRef"
-        v-model="renameDraft"
-        type="text"
-        class="min-w-0 flex-1 border-0 bg-transparent p-0 text-base font-medium outline-none"
-        aria-label="Rename note"
-        @keydown.enter.prevent="commitRename"
-        @keydown.escape.prevent="cancelRename"
-        @blur="commitRename"
-      >
-      <button
-        v-else
-        type="button"
-        class="min-w-0 flex-1 truncate border-0 bg-transparent p-0 text-left text-sm font-medium disabled:cursor-default"
-        :disabled="renameDisabled"
-        @click="startRename"
-      >
-        {{ displayName }}
-      </button>
-      <div
-        v-if="filename && !isPdf"
-        class="flex shrink-0 items-center rounded-md border p-0.5"
-        role="group"
-        aria-label="Editor mode"
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          class="h-7 px-2"
-          :class="editorMode === 'wysiwyg' && 'bg-accent text-accent-foreground'"
-          aria-label="Visual editor"
-          :aria-pressed="editorMode === 'wysiwyg'"
-          :disabled="drawingEditing"
-          @click="setEditorMode('wysiwyg')"
+      <div class="flex min-w-0 flex-1 items-center gap-1.5 px-2 text-base">
+        <span
+          v-if="breadcrumb"
+          class="hidden max-w-[40%] shrink-0 truncate text-neutral-400 md:inline"
+        >{{ breadcrumb }} /</span>
+        <h2
+          v-if="!filename"
+          class="truncate text-neutral-400"
         >
-          <PenLine class="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          class="h-7 px-2"
-          :class="editorMode === 'code' && 'bg-accent text-accent-foreground'"
-          aria-label="Markdown source"
-          :aria-pressed="editorMode === 'code'"
-          :disabled="drawingEditing"
-          @click="setEditorMode('code')"
+          No note selected
+        </h2>
+        <input
+          v-else-if="renaming"
+          ref="renameInputRef"
+          v-model="renameDraft"
+          type="text"
+          class="min-w-0 flex-1 rounded-md bg-neutral-100 px-1.5 py-0.5 -mx-1.5 font-medium outline-none"
+          aria-label="Rename note"
+          @keydown.enter.prevent="commitRename"
+          @keydown.escape.prevent="cancelRename"
+          @blur="commitRename"
         >
-          <Code2 class="size-4" />
-        </Button>
+        <button
+          v-else
+          type="button"
+          class="min-w-0 truncate text-left font-medium disabled:cursor-default"
+          title="Rename"
+          :disabled="renameDisabled"
+          @click="startRename"
+        >
+          {{ displayName }}
+        </button>
       </div>
-      <Button
-        v-if="filename"
-        type="button"
-        variant="outline"
-        size="sm"
-        class="shrink-0"
-        :disabled="moveDisabled"
-        @click="$emit('move')"
+      <span
+        v-if="editedLabel"
+        class="hidden shrink-0 px-2 text-xs text-neutral-400 lg:inline"
+        title="Last edited"
       >
-        Move
-      </Button>
+        {{ editedLabel }}
+      </span>
       <Button
-        v-if="filename"
+        v-if="filename && !isPdf"
         type="button"
         variant="ghost"
         size="icon"
-        class="shrink-0"
-        aria-label="Delete note"
-        :disabled="deleteDisabled"
-        @click="$emit('delete')"
+        :class="
+          cn(
+            'shrink-0 text-neutral-500',
+            editorMode === 'code' && 'bg-neutral-100 text-neutral-900',
+          )
+        "
+        :title="editorMode === 'code' ? 'Show formatted note' : 'Show markdown source'"
+        aria-label="Markdown source"
+        :aria-pressed="editorMode === 'code'"
+        :disabled="drawingEditing"
+        @click="setEditorMode(editorMode === 'code' ? 'wysiwyg' : 'code')"
       >
-        <Trash2 class="size-4" />
+        <Code2 class="size-4" />
       </Button>
-    </div>
+      <NoteActionsMenu
+        v-if="filename"
+        :rename-disabled="renameDisabled"
+        :move-disabled="moveDisabled"
+        :delete-disabled="deleteDisabled"
+        @rename="startRename"
+        @move="$emit('move')"
+        @delete="$emit('delete')"
+      />
+    </header>
     <div
       v-if="isLoading"
-      class="p-4 space-y-2"
+      class="mx-auto w-full max-w-2xl space-y-3 px-5 pt-5 md:px-10 md:pt-8"
     >
-      <Skeleton class="h-4 w-1/3" />
-      <Skeleton class="h-32 w-full" />
+      <Skeleton class="h-7 w-1/2" />
+      <Skeleton class="h-4 w-full" />
+      <Skeleton class="h-4 w-4/5" />
     </div>
     <div
       v-else
@@ -228,11 +222,13 @@ function setEditorMode(mode: EditorMode) {
     >
       <div
         v-if="!filename"
-        class="flex h-full flex-col items-center justify-center p-4"
+        class="flex h-full flex-col items-center justify-center gap-4 p-4 text-sm text-neutral-400"
       >
+        Pick a note from the list, or start a new one.
         <Button
           type="button"
           variant="outline"
+          class="rounded-full"
           :disabled="!canCreateNote"
           @click="$emit('newNote')"
         >

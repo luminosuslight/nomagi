@@ -366,6 +366,7 @@ onUnmounted(() => {
         :create-binary-file="createBinaryFile"
         :filename="selectedFile"
         :is-loading="isLoadingContent"
+        :last-modified="selectedFile ? noteDates[selectedFile] : undefined"
         :show-back="mobileView === 'editor'"
         :can-create-note="isCloned && !isBusy"
         :delete-disabled="isBusy || !selectedFile"

@@ -262,7 +262,7 @@ defineExpose({ getMarkdown, focus })
       ref="editorScrollEl"
       :class="
         cn(
-          'milkdown-editor min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
+          'milkdown-editor min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-24 text-base focus-visible:outline-none md:px-10 md:pt-8',
           drawingEditing && 'pointer-events-none overflow-hidden select-none',
           disabled && 'cursor-not-allowed opacity-50',
           $props.class,
@@ -277,7 +277,7 @@ defineExpose({ getMarkdown, focus })
     ref="editorScrollEl"
     :class="
       cn(
-        'milkdown-editor absolute inset-0 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
+        'milkdown-editor absolute inset-0 overflow-y-auto px-5 pt-5 pb-24 text-base focus-visible:outline-none md:px-10 md:pt-8',
         drawingEditing && 'pointer-events-none overflow-hidden select-none',
         disabled && 'cursor-not-allowed opacity-50',
         $props.class,
@@ -301,15 +301,72 @@ defineExpose({ getMarkdown, focus })
 }
 
 .milkdown-editor :deep(.milkdown) {
+  --crepe-font-title: var(--font-sans);
+  --crepe-font-default: var(--font-sans);
+  --crepe-font-code: var(--font-mono);
+  --crepe-color-on-background: var(--color-neutral-800);
+  --crepe-color-outline: var(--color-neutral-300);
+  --crepe-color-inline-code: var(--color-neutral-700);
+  --crepe-color-selected: var(--color-neutral-200);
   width: 100%;
   padding-top: 0;
 }
 
 .milkdown-editor :deep(.milkdown .ProseMirror) {
   width: 100%;
-  max-width: 48rem;
+  max-width: 42rem;
   margin-inline: auto;
   padding: 0.25rem 0 0;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6)) {
+  color: var(--color-neutral-950);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror h1) {
+  font-size: 1.875rem;
+  line-height: 1.25;
+  margin-top: 2rem;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror h2) {
+  font-size: 1.375rem;
+  line-height: 1.35;
+  margin-top: 1.75rem;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror h3) {
+  font-size: 1.125rem;
+  margin-top: 1.5rem;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror :is(h4, h5, h6)) {
+  font-size: 1rem;
+  margin-top: 1.25rem;
+}
+
+.milkdown-editor :deep(.milkdown .milkdown-list-item-block li p) {
+  padding: 2px 0;
+}
+
+/* Bullet box height = line height + paragraph padding, so the marker centers on the first line. */
+.milkdown-editor :deep(.milkdown .milkdown-list-item-block li .label-wrapper),
+.milkdown-editor :deep(.milkdown .milkdown-list-item-block li .label-wrapper .label) {
+  height: 28px;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror a) {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--color-neutral-300);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.milkdown-editor :deep(.milkdown .ProseMirror a:hover) {
+  text-decoration-color: currentColor;
 }
 
 .milkdown-editor :deep(.milkdown .ProseMirror > :first-child),
