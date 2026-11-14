@@ -29,6 +29,9 @@ export function listDisplayName(filepath: string): string {
   return basename
 }
 
+/** Image alt text is often a Crepe resize ratio (e.g. `0.50`), so it is not shown in previews. */
+const IMAGE_PREVIEW = '<img>'
+
 const DRAWING_FIGURE_RE = /<figure\b[^>]*>[\s\S]*?<\/figure>/gi
 const SVG_BLOCK_RE = /<svg\b[^>]*>[\s\S]*?<\/svg>/gi
 
@@ -63,7 +66,7 @@ function stripBlockMarkdownForPreview(line: string): string {
 
 function stripInlineMarkdownForPreview(line: string): string {
   return line
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, IMAGE_PREVIEW)
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')

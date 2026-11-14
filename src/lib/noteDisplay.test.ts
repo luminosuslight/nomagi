@@ -30,6 +30,12 @@ describe('stripMarkdownForPreview', () => {
     expect(stripMarkdownForPreview(input)).toBe('**Title**\n• item\nbold text')
   })
 
+  it('shows images as a placeholder instead of their alt text', () => {
+    const input = ['![0.50](img/a.png)', '- see ![Diagram](b.png "Caption")'].join('\n')
+
+    expect(stripMarkdownForPreview(input)).toBe('<img>\n• see <img>')
+  })
+
   it('replaces drawing figures and svg blocks with [drawing]', () => {
     const drawingFigure = [
       '<figure data-type="drawing" class="sketch">',

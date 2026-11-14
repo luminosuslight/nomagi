@@ -14,6 +14,16 @@ import {
   insertDrawingCommand,
   sketchSlashMenuConfig,
 } from '@/lib/milkdown/drawing'
+import ImageLightbox, { type LightboxImage } from '@/components/ImageLightbox.vue'
+import { imageBlockConfig } from '@milkdown/kit/component/image-block'
+import {
+  attachImageExpandButtons,
+  attachImageResizeUnlock,
+  collectImages,
+  configurePasteImageUrl,
+  createRepoImageResolver,
+  imageBlockWithAlt,
+} from '@/lib/milkdown/images'
 import { jsDrawRemark, jsDrawSchema, jsDrawView } from '@/lib/milkdown/jsDraw'
 import { listIndentSpaceInputRule, listOutdentBackspacePlugin } from '@/lib/milkdown/listIndent'
 import { tightBulletList, tightListItem, tightOrderedList } from '@/lib/milkdown/tightLists'
@@ -27,7 +37,13 @@ const props = defineProps<{
   placeholder?: string
   disabled?: boolean
   class?: string
+  /** Repo path of the open note; relative image paths resolve against it. */
+  filename?: string | null
+  readFileBinary?: (filepath: string) => Promise<Uint8Array>
 }>()
+
+/** Images stay thumbnail-sized in the note; the lightbox shows them full size. */
+const IMAGE_MAX_HEIGHT_PX = 150
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -43,8 +59,44 @@ let lastUserChange = 0
 let syncToParent = false
 const isUnmounted = ref(false)
 
+const imageResolver = props.readFileBinary
+  ? createRepoImageResolver(() => props.filename ?? null, props.readFileBinary)
+  : null
+
+const editorScrollEl = ref<HTMLElement | null>(null)
+const lightboxImages = shallowRef<LightboxImage[]>([])
+const lightboxIndex = ref<number | null>(null)
+
+function openLightbox(image: HTMLImageElement) {
+  const root = editorScrollEl.value
+  if (!root) return
+  const images = collectImages(root)
+  lightboxImages.value = images.map((img) => ({
+    src: img.currentSrc || img.src,
+    caption: img.title || img.alt,
+  }))
+  lightboxIndex.value = Math.max(0, images.indexOf(image))
+}
+
+function imageBlockSettings() {
+  const crepe = crepeRef.value
+  if (!crepe || loading.value) return undefined
+  return crepe.editor.action((ctx) => ctx.get(imageBlockConfig.key))
+}
+
+watch(editorScrollEl, (root, _prev, onCleanup) => {
+  if (!root) return
+  const detachButtons = attachImageExpandButtons(root, openLightbox)
+  const detachResize = attachImageResizeUnlock(root, imageBlockSettings)
+  onCleanup(() => {
+    detachButtons()
+    detachResize()
+  })
+})
+
 onUnmounted(() => {
   isUnmounted.value = true
+  imageResolver?.dispose()
 })
 
 function enableParentSync() {
@@ -64,6 +116,10 @@ const { loading } = useEditor((root) => {
         text: props.placeholder ?? 'Start writing…',
       },
       [Crepe.Feature.BlockEdit]: sketchSlashMenuConfig,
+      [Crepe.Feature.ImageBlock]: {
+        maxHeight: IMAGE_MAX_HEIGHT_PX,
+        proxyDomURL: imageResolver?.resolve,
+      },
     },
   })
 
@@ -74,6 +130,8 @@ const { loading } = useEditor((root) => {
       ctx.set(drawingOverlayRootCtx.key, overlayRoot)
       ctx.set(drawingEditingCtx.key, drawingEditing)
     })
+    .config(configurePasteImageUrl)
+    .use(imageBlockWithAlt)
     .use(tightListItem)
     .use(tightBulletList)
     .use(tightOrderedList)
@@ -154,6 +212,7 @@ defineExpose({ getMarkdown })
     class="absolute inset-0 flex min-h-0 flex-col"
   >
     <div
+      ref="editorScrollEl"
       :class="
         cn(
           'milkdown-editor min-h-0 flex-1 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
@@ -168,6 +227,7 @@ defineExpose({ getMarkdown })
   </div>
   <div
     v-else
+    ref="editorScrollEl"
     :class="
       cn(
         'milkdown-editor absolute inset-0 overflow-y-auto px-4 pb-3 pt-1 text-base focus-visible:outline-none',
@@ -179,6 +239,10 @@ defineExpose({ getMarkdown })
   >
     <Milkdown spellcheck="false" />
   </div>
+  <ImageLightbox
+    v-model="lightboxIndex"
+    :images="lightboxImages"
+  />
 </template>
 
 <style scoped>
@@ -206,6 +270,71 @@ defineExpose({ getMarkdown })
 .milkdown-editor :deep(.milkdown .ProseMirror > .prosemirror-virtual-cursor + *),
 .milkdown-editor :deep(.milkdown .ProseMirror > h1:first-of-type) {
   margin-top: 0;
+}
+
+.milkdown-editor :deep(.milkdown-image-block .operation > .image-expand-button) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+}
+
+/* Touch devices have no hover, so show the image toolbar once the image is tapped (selected). */
+.milkdown-editor :deep(.milkdown-image-block.selected > .image-wrapper .operation) {
+  opacity: 1;
+}
+
+/* Left-align block images (Crepe centers them) so they line up with text, also in lists. */
+.milkdown-editor :deep(.milkdown-image-block > .image-wrapper) {
+  margin-inline: 0;
+}
+
+.milkdown-editor :deep(.milkdown-image-block > .caption-input) {
+  text-align: left;
+}
+
+/* Enlarged images keep their height on narrower screens; letterbox instead of cropping. */
+.milkdown-editor :deep(.milkdown-image-block > .image-wrapper img) {
+  object-fit: contain;
+}
+
+.milkdown-editor :deep(.milkdown-image-inline) {
+  position: relative;
+}
+
+.milkdown-editor :deep(.milkdown-image-inline > .image-inline-expand-button) {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--crepe-color-on-inverse);
+  background: var(--crepe-color-inverse);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.milkdown-editor :deep(.milkdown-image-inline:hover > .image-inline-expand-button),
+.milkdown-editor :deep(.milkdown-image-inline.selected > .image-inline-expand-button) {
+  opacity: 0.6;
+}
+
+.milkdown-editor :deep(.milkdown-image-inline > .image-inline-expand-button svg) {
+  width: 20px;
+  height: 20px;
+}
+
+.milkdown-editor :deep(.milkdown-image-inline img) {
+  max-width: 100%;
+  /* Keep in sync with IMAGE_MAX_HEIGHT_PX. */
+  max-height: 150px;
 }
 
 .milkdown-editor :deep(figure.sketch),

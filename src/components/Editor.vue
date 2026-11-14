@@ -16,6 +16,7 @@ const props = defineProps<{
   filename: string | null
   modelValue: string
   pdfData?: Uint8Array | null
+  readFileBinary?: (filepath: string) => Promise<Uint8Array>
   isLoading: boolean
   showBack?: boolean
   canCreateNote?: boolean
@@ -248,6 +249,8 @@ function setEditorMode(mode: EditorMode) {
           ref="milkdownEditorRef"
           :key="`${filename}-wysiwyg`"
           :model-value="modelValue"
+          :filename="filename"
+          :read-file-binary="readFileBinary"
           placeholder="Start writing…"
           @update:model-value="onWysiwygUpdate"
         />
