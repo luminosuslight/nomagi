@@ -1,0 +1,12 @@
+{
+  "name": "nomagi-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Regenerates the README screenshots from a dummy notes repo.",
+  "scripts": {
+    "screenshots": "node run.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.65.1"
+  }
+}
